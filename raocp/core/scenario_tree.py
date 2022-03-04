@@ -1,3 +1,6 @@
+import raocp.core
+
+
 class ScenarioTree:
 
     def __init__(self):
@@ -10,7 +13,7 @@ class ScenarioTree:
         raise NotImplemented()
 
     def ancestor_of(self, node_idx):
-        raise NotImplemented()
+        return self.__ancestors[node_idx]
 
     def children_of(self, node_idx):
         raise NotImplemented()
@@ -35,7 +38,9 @@ class ScenarioTree:
                           initial_distribution,
                           stages,
                           stopping_time=None):
-        return ScenarioTree()
+        tree = ScenarioTree()
+        tree.__ancestors = [None, 0, 0, 1, 1, 1, 123, 456]
+        return tree
 
 
 
