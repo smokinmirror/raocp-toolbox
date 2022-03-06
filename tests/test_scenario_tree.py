@@ -1,9 +1,9 @@
-from unittest import TestCase
+import unittest
 import raocp.core as rc
 import numpy as np
 
 
-class TestScenarioTree(TestCase):
+class TestScenarioTree(unittest.TestCase):
 
     __tree_from_markov = None
     __tree_from_iid = None
@@ -108,3 +108,7 @@ class TestScenarioTree(TestCase):
             for node_idx in tree.nodes_at_stage(stage):
                 self.assertAlmostEqual(1., sum(tree.conditional_probabilities_of_children(node_idx)), tol)
 
+
+
+if __name__ == '__main__':
+    unittest.main()
