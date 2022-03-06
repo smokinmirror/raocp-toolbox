@@ -25,7 +25,7 @@ regular_test() {
 
     # --- run the tests
     # export PYTHONPATH=.
-    python -W ignore test/test.py -v
+    python -W ignore tests/test_scenario_tree.py -v
 }
 
 
