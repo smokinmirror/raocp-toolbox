@@ -65,6 +65,15 @@ class TestScenarioTree(unittest.TestCase):
         for idx in range(20, 32):
             self.assertEqual(4, tree.stage_of(idx))
 
+    def test_markov_stage_of_failure(self):
+        tree = TestScenarioTree.__tree_from_markov
+        with self.assertRaises(ValueError):
+            _ = tree.stage_of(-1)
+
+    def test_markov_num_stages(self):
+        tree = TestScenarioTree.__tree_from_markov
+        self.assertEqual(4, tree.num_stages())
+
     def test_markov_nodes_at_stage(self):
         tree = TestScenarioTree.__tree_from_markov
         self.assertEqual(1, len(tree.nodes_at_stage(0)))
@@ -100,6 +109,9 @@ class TestScenarioTree(unittest.TestCase):
         self.assertEqual(2, len(tree.siblings_of_node(11)))
         for i in range(20, 32):
             self.assertEqual(1, len(tree.siblings_of_node(i)))
+
+    def test_markov_values(self):
+        self.fail("not tested yet!")
 
     def test_markov_conditional_probabilities_of_children(self):
         tol = 1e-10
