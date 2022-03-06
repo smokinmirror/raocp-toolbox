@@ -33,10 +33,10 @@ class ScenarioTree:
         pass
 
     def num_nodes(self):
-        raise NotImplementedError()
+        return len(self.__ancestors)
 
     def num_stages(self):
-        raise NotImplementedError("#stages not implemented")
+        return self.__stages[-1]
 
     def ancestor_of(self, node_idx):
         return self.__ancestors[node_idx]
@@ -45,7 +45,12 @@ class ScenarioTree:
         raise NotImplementedError()
 
     def stage_of(self, node_idx):
-        raise NotImplementedError()
+        if node_idx < 0:
+            raise ValueError("node_idx cannot be <0")
+        return self.__stages[node_idx]
+
+    def value_at_node(self, node_idx):
+        return self.__w_idx[node_idx]
 
     def nodes_at_stage(self, stage_idx):
         raise NotImplementedError()
@@ -72,15 +77,12 @@ class MarkovChainScenarioTreeFactory:
             _check_probability_vector(pi)
         _check_probability_vector(initial_distribution)
 
-    # function
-    # cover = find(chainProbTransMatrix(i,:)~ = 0);
     def __cover(self, i):
         pi = self.__transition_prob[i, :]
         return np.flatnonzero(pi)
 
     def __make_ancestors_values_stages(self):
         """
-
         :return: ancestors, values of w and stages
         """
         num_nonzero_init_distr = len(list(filter(lambda x: (x > 0), self.__initial_distribution)))
@@ -97,7 +99,7 @@ class MarkovChainScenarioTreeFactory:
 
         cursor = 1
         num_nodes_at_stage = num_nonzero_init_distr
-        for stage in range(1, self.__stopping_time):
+        for stage_idx in range(1, self.__stopping_time):
             nodes_added_at_stage = 0
             cursor_new = cursor + num_nodes_at_stage
             for i in range(num_nodes_at_stage):
@@ -109,6 +111,13 @@ class MarkovChainScenarioTreeFactory:
                 values = np.concatenate((values, cover))
             num_nodes_at_stage = nodes_added_at_stage
             cursor = cursor_new
+            stages = np.concatenate((stages, (1 + stage_idx) * np.ones(nodes_added_at_stage, )))
+
+        for stage_idx in range(self.__stopping_time, self.__num_stages):
+            ancestors = np.concatenate((ancestors, range(cursor, cursor+num_nodes_at_stage)))
+            cursor += num_nodes_at_stage
+            stages = np.concatenate((stages, (1 + stage_idx) * np.ones(nodes_added_at_stage, )))
+            # TODO update `values` after stopping time?
         return ancestors, values, stages
 
     def __make_probability_values(self):
@@ -119,7 +128,6 @@ class MarkovChainScenarioTreeFactory:
         ancestors, values, stages = self.__make_ancestors_values_stages()
         probs = self.__make_probability_values()
         tree = ScenarioTree(stages, ancestors, probs, values)
-        print(ancestors)
         return tree
 
 
