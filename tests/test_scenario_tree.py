@@ -46,7 +46,13 @@ class TestScenarioTree(TestCase):
 
     def test_markov_nodes_at_stage(self):
         tree = TestScenarioTree.__tree_from_markov
-        self.fail()
+        self.assertEqual(0, tree.nodes_at_stage(0))
+        self.assertEqual([1, 2], tree.nodes_at_stage(1))
+        self.assertEqual([3, 4, 5, 6, 7], tree.nodes_at_stage(2))
+        self.assertEqual([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], tree.nodes_at_stage(3))
+        self.assertEqual([20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31], tree.nodes_at_stage(4))
+        for inodes in tree.nodes_at_stage(2):
+            print(inodes)
 
     def test_markov_probability_of_node(self):
         tol = 1e-10
