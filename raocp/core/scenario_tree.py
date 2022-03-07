@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import raocp.core
 import numpy as np
 
@@ -97,3 +98,10 @@ class ScenarioTree:
         print(tree.__ancestors)
 
         return tree
+=======
+class ScenarioTree:
+
+    def __init__(self):
+        print("Constructed scenario tree")
+        pass
+>>>>>>> main
