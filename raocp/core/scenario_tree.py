@@ -30,7 +30,7 @@ class ScenarioTree:
         self.__update_children()
 
     def __num_nonleaf_nodes(self):
-        return np.sum(self.__stages < self.__stages[-1])
+        return np.sum(self.__stages < self.num_stages())
 
     def __update_children(self):
         self.__children = []
@@ -65,7 +65,9 @@ class ScenarioTree:
         raise NotImplementedError()
 
     def siblings_of_node(self, node_idx):
-        raise NotImplementedError()
+        if node_idx == 0:
+            return [0]
+        return self.children_of(self.ancestor_of(node_idx))
 
     def conditional_probabilities_of_children(self, node_idx):
         raise NotImplementedError()
@@ -93,14 +95,14 @@ class MarkovChainScenarioTreeFactory:
         """
         num_nonzero_init_distr = len(list(filter(lambda x: (x > 0), self.__initial_distribution)))
         # Initialise `ancestors`
-        ancestors = np.zeros((num_nonzero_init_distr+1, ))
-        ancestors[0] = np.nan  # node 0 does not have an ancestor
+        ancestors = np.zeros((num_nonzero_init_distr+1, ), dtype=int)
+        ancestors[0] = -1  # node 0 does not have an ancestor
         # Initialise `values`
-        values = np.zeros((num_nonzero_init_distr+1, ))
-        values[0] = np.nan
+        values = np.zeros((num_nonzero_init_distr+1, ), dtype=int)
+        values[0] = -1
         values[1:] = np.flatnonzero(self.__initial_distribution)
         # Initialise `stages`
-        stages = np.ones((num_nonzero_init_distr+1, ))
+        stages = np.ones((num_nonzero_init_distr+1, ), dtype=int)
         stages[0] = 0
 
         cursor = 1
@@ -112,17 +114,20 @@ class MarkovChainScenarioTreeFactory:
                 node_id = cursor + i
                 cover = self.__cover(int(values[node_id]))
                 length_cover = len(cover)
-                ancestors = np.concatenate((ancestors, node_id * np.ones((length_cover, ))))
+                ones = np.ones((length_cover, ), dtype=int)
+                ancestors = np.concatenate((ancestors, node_id * ones))
                 nodes_added_at_stage += length_cover
                 values = np.concatenate((values, cover))
             num_nodes_at_stage = nodes_added_at_stage
             cursor = cursor_new
-            stages = np.concatenate((stages, (1 + stage_idx) * np.ones(nodes_added_at_stage, )))
+            ones = np.ones(nodes_added_at_stage, dtype=int)
+            stages = np.concatenate((stages, (1 + stage_idx) * ones))
 
         for stage_idx in range(self.__stopping_time, self.__num_stages):
             ancestors = np.concatenate((ancestors, range(cursor, cursor+num_nodes_at_stage)))
             cursor += num_nodes_at_stage
-            stages = np.concatenate((stages, (1 + stage_idx) * np.ones(nodes_added_at_stage, )))
+            ones = np.ones((nodes_added_at_stage,), dtype=int )
+            stages = np.concatenate((stages, (1 + stage_idx) * ones))
             values = np.concatenate((values, values[-num_nodes_at_stage::]))
 
         return ancestors, values, stages
