@@ -91,7 +91,7 @@ class ScenarioTree:
         trt.pendown()
         trt.circle(rad)
 
-    def __draw_leaf_nodes_on_circle(self, trt, radius, dot_size=10):
+    def __draw_leaf_nodes_on_circle(self, trt, radius, dot_size=6):
         trt.pencolor('gray')
         ScenarioTree.__draw_circle(trt, radius)
         leaf_nodes = self.nodes_at_stage(self.num_stages())
@@ -107,7 +107,7 @@ class ScenarioTree:
         trt.pencolor('black')
         return arcs
 
-    def __draw_nonleaf_nodes_on_circle(self, trt, radius, larger_radius, stage, arcs, dot_size=10):
+    def __draw_nonleaf_nodes_on_circle(self, trt, radius, larger_radius, stage, arcs, dot_size=6):
         trt.pencolor('gray')
         ScenarioTree.__draw_circle(trt, radius)
         nodes = self.nodes_at_stage(stage)
@@ -124,7 +124,7 @@ class ScenarioTree:
             trt.pencolor('gray')
         return arcs
 
-    def bulls_eye_plot(self):
+    def bulls_eye_plot(self, dot_size=5):
         wn = turtle.Screen()
         wn.tracer(0)
 
@@ -132,11 +132,11 @@ class ScenarioTree:
         t.speed(0)
 
         radius = 300
-        arcs = self.__draw_leaf_nodes_on_circle(t, radius)
+        arcs = self.__draw_leaf_nodes_on_circle(t, radius, dot_size)
         radius_step = radius / self.num_stages()
         for n in range(self.num_stages()-1, -1, -1):
             radius -= radius_step
-            arcs = self.__draw_nonleaf_nodes_on_circle(t, radius, radius+radius_step, n, arcs)
+            arcs = self.__draw_nonleaf_nodes_on_circle(t, radius, radius+radius_step, n, arcs, dot_size)
 
         wn.update()
         wn.mainloop()

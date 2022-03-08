@@ -27,13 +27,13 @@ p = np.array([[0.1, 0.8, 0.1],
 
 v = np.array([0.5, 0.4, 0.1])
 
-(N, tau) = (10, 7)
+(N, tau) = (10, 5)
 
 tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
                                              initial_distribution=v,
                                              num_stages=N, stopping_time=tau).create()
 print(tree.nodes_at_stage(2))
-tree.bulls_eye_plot()
+tree.bulls_eye_plot(dot_size=5)
 
 
 
