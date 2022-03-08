@@ -139,8 +139,7 @@ class ScenarioTree:
         wn.update()
 
         if filename is not None:
-            wn.getcanvas().postscript(file=filename
-                                      )
+            wn.getcanvas().postscript(file=filename)
         wn.mainloop()
 
 

@@ -32,6 +32,7 @@ v = np.array([0.5, 0.4, 0.1])
 tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
                                              initial_distribution=v,
                                              num_stages=N, stopping_time=tau).create()
+
 tree.bulls_eye_plot(dot_size=5, radius=300)
 
 
