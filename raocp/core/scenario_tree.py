@@ -1,5 +1,6 @@
 import raocp.core
 import numpy as np
+import turtle
 
 
 def _check_probability_vector(p):
@@ -72,10 +73,80 @@ class ScenarioTree:
     def conditional_probabilities_of_children(self, node_idx):
         raise NotImplementedError()
 
+    @staticmethod
+    def __circle_coord(rad, arc):
+        return rad * np.cos(np.deg2rad(arc)), rad * np.sin(np.deg2rad(arc))
+
+    @staticmethod
+    def __goto_circle_coord(trt, rad, arc):
+        trt.penup()
+        trt.goto(ScenarioTree.__circle_coord(rad, arc))
+        trt.pendown()
+
+    @staticmethod
+    def __draw_circle(trt, rad):
+        trt.penup()
+        trt.home()
+        trt.goto(0, -rad)
+        trt.pendown()
+        trt.circle(rad)
+
+    def __draw_leaf_nodes_on_circle(self, trt, radius, dot_size=10):
+        trt.pencolor('gray')
+        ScenarioTree.__draw_circle(trt, radius)
+        leaf_nodes = self.nodes_at_stage(self.num_stages())
+        num_nds = len(leaf_nodes)
+        dv = 360 / num_nds
+        arcs = np.zeros(self.num_nodes())
+        for i in range(num_nds):
+            ScenarioTree.__goto_circle_coord(trt, radius, i * dv)
+            trt.pencolor('black')
+            trt.dot(dot_size)
+            trt.pencolor('gray')
+            arcs[leaf_nodes[i]] = i * dv
+        trt.pencolor('black')
+        return arcs
+
+    def __draw_nonleaf_nodes_on_circle(self, trt, radius, larger_radius, stage, arcs, dot_size=10):
+        trt.pencolor('gray')
+        ScenarioTree.__draw_circle(trt, radius)
+        nodes = self.nodes_at_stage(stage)
+        for n in nodes:
+            mean_arc = np.mean(arcs[self.children_of(n)])
+            arcs[n] = mean_arc
+            ScenarioTree.__goto_circle_coord(trt, radius, mean_arc)
+            trt.pencolor('black')
+            trt.dot(dot_size)
+            for nc in self.children_of(n):
+                current_pos = trt.pos()
+                trt.goto(ScenarioTree.__circle_coord(larger_radius, arcs[nc]))
+                trt.goto(current_pos)
+            trt.pencolor('gray')
+        return arcs
+
+    def bulls_eye_plot(self):
+        wn = turtle.Screen()
+        wn.tracer(0)
+
+        t = turtle.Turtle(visible=False)
+        t.speed(0)
+
+        radius = 300
+        arcs = self.__draw_leaf_nodes_on_circle(t, radius)
+        radius_step = radius / self.num_stages()
+        for n in range(self.num_stages()-1, -1, -1):
+            radius -= radius_step
+            arcs = self.__draw_nonleaf_nodes_on_circle(t, radius, radius+radius_step, n, arcs)
+
+        wn.update()
+        wn.mainloop()
+
 
 class MarkovChainScenarioTreeFactory:
 
     def __init__(self, transition_prob, initial_distribution, num_stages, stopping_time=None):
+        if stopping_time is None:
+            stopping_time = num_stages
         self.__transition_prob = transition_prob
         self.__initial_distribution = initial_distribution
         self.__num_stages = num_stages
