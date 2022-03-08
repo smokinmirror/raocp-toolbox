@@ -37,10 +37,13 @@ class TestScenarioTree(unittest.TestCase):
         self.assertEqual(1, tree.ancestor_of(5))
         self.assertEqual(2, tree.ancestor_of(6))
         self.assertEqual(2, tree.ancestor_of(7))
+        self.assertEqual(3, tree.ancestor_of(8))
+        self.assertEqual(3, tree.ancestor_of(9))
+        self.assertEqual(3, tree.ancestor_of(10))
         self.assertEqual(5, tree.ancestor_of(13))
-        self.assertEqual(8, tree.ancestor_of(20))
-        self.assertEqual(15, tree.ancestor_of(27))
-        self.assertEqual(19, tree.ancestor_of(31))
+        for i in range(12):
+            self.assertEqual(8+i, tree.ancestor_of(20+i))
+
 
     def test_markov_children_of(self):
         tree = TestScenarioTree.__tree_from_markov
@@ -111,7 +114,11 @@ class TestScenarioTree(unittest.TestCase):
             self.assertEqual(1, len(tree.siblings_of_node(i)))
 
     def test_markov_values(self):
-        self.fail("not tested yet!")
+        tree = TestScenarioTree.__tree_from_markov
+        self.assertTrue(([0, 1] == tree.value_at_node(range(1, 3))).all())
+        self.assertTrue(([0, 1, 2, 0, 1] == tree.value_at_node(range(3, 8))).all())
+        self.assertTrue(([0, 1, 2, 0, 1, 1, 2, 0, 1, 2, 0, 1] == tree.value_at_node(range(8, 20))).all())
+        self.assertTrue((tree.value_at_node(range(8, 20)) == tree.value_at_node(range(20, 32))).all())
 
     def test_markov_conditional_probabilities_of_children(self):
         tol = 1e-10

@@ -117,7 +117,8 @@ class MarkovChainScenarioTreeFactory:
             ancestors = np.concatenate((ancestors, range(cursor, cursor+num_nodes_at_stage)))
             cursor += num_nodes_at_stage
             stages = np.concatenate((stages, (1 + stage_idx) * np.ones(nodes_added_at_stage, )))
-            # TODO update `values` after stopping time?
+            values = np.concatenate((values, values[-num_nodes_at_stage::]))
+        
         return ancestors, values, stages
 
     def __make_probability_values(self):
