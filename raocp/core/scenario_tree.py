@@ -29,8 +29,14 @@ class ScenarioTree:
         self.__data = None  # really, any data associated with the nodes of the tree
         self.__update_children()
 
+    def __num_nonleaf_nodes(self):
+        return np.sum(self.__stages < self.__stages[-1])
+
     def __update_children(self):
-        pass
+        self.__children = []
+        for i in range(self.__num_nonleaf_nodes()):
+            children_of_i = np.where(self.__ancestors == i)
+            self.__children += children_of_i
 
     def num_nodes(self):
         return len(self.__ancestors)
@@ -42,7 +48,7 @@ class ScenarioTree:
         return self.__ancestors[node_idx]
 
     def children_of(self, node_idx):
-        raise NotImplementedError()
+        return self.__children[node_idx]
 
     def stage_of(self, node_idx):
         if node_idx < 0:
@@ -118,7 +124,7 @@ class MarkovChainScenarioTreeFactory:
             cursor += num_nodes_at_stage
             stages = np.concatenate((stages, (1 + stage_idx) * np.ones(nodes_added_at_stage, )))
             values = np.concatenate((values, values[-num_nodes_at_stage::]))
-        
+
         return ancestors, values, stages
 
     def __make_probability_values(self):

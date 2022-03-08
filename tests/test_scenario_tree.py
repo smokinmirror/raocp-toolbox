@@ -44,7 +44,6 @@ class TestScenarioTree(unittest.TestCase):
         for i in range(12):
             self.assertEqual(8+i, tree.ancestor_of(20+i))
 
-
     def test_markov_children_of(self):
         tree = TestScenarioTree.__tree_from_markov
         self.assertEqual(2, len(tree.children_of(0)))
@@ -54,7 +53,6 @@ class TestScenarioTree(unittest.TestCase):
         self.assertEqual(3, len(tree.children_of(6)))
         for idx in range(8, 20):
             self.assertEqual(1, len(tree.children_of(idx)))
-        # TODO more testing
 
     def test_markov_stage_of(self):
         tree = TestScenarioTree.__tree_from_markov
