@@ -59,7 +59,7 @@ class ScenarioTree:
         return self.__w_idx[node_idx]
 
     def nodes_at_stage(self, stage_idx):
-        raise NotImplementedError()
+        return np.where(self.__stages == stage_idx)[0]
 
     def probability_of_node(self, node_idx):
         raise NotImplementedError()

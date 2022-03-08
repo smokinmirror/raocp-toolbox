@@ -82,10 +82,11 @@ class TestScenarioTree(unittest.TestCase):
         self.assertEqual(5, len(tree.nodes_at_stage(2)))
         self.assertEqual(12, len(tree.nodes_at_stage(3)))
         self.assertEqual(12, len(tree.nodes_at_stage(4)))
-        self.assertEqual(8, tree.nodes_at_stage(3).start)
-        self.assertEqual(20, tree.nodes_at_stage(3).stop)
-        self.assertEqual(20, tree.nodes_at_stage(4).start)
-        self.assertEqual(32, tree.nodes_at_stage(4).stop)
+        self.assertTrue(([1, 2] == tree.nodes_at_stage(1)).all())
+        self.assertTrue((range(3, 8) == tree.nodes_at_stage(2)).all())
+        self.assertTrue((range(8, 20) == tree.nodes_at_stage(3)).all())
+        self.assertTrue((range(20, 32) == tree.nodes_at_stage(4)).all())
+
 
     def test_markov_probability_of_node(self):
         tol = 1e-10
