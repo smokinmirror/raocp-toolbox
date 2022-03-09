@@ -62,7 +62,7 @@ class ScenarioTree:
         return np.where(self.__stages == stage_idx)[0]
 
     def probability_of_node(self, node_idx):
-        raise NotImplementedError()
+        return self.__probability[node_idx]
 
     def siblings_of_node(self, node_idx):
         if node_idx == 0:
@@ -70,7 +70,10 @@ class ScenarioTree:
         return self.children_of(self.ancestor_of(node_idx))
 
     def conditional_probabilities_of_children(self, node_idx):
-        raise NotImplementedError()
+        prob_node_idx = self.probability_of_node(node_idx)
+        children = self.children_of(node_idx)
+        prob_children = self.__probability[children]
+        return prob_children / prob_node_idx
 
     def __str__(self):
         return f"Scenario Tree\n+ Nodes: {self.num_nodes()}\n+ Stages: {self.num_stages()}\n" \
@@ -121,7 +124,7 @@ class MarkovChainScenarioTreeFactory:
             cursor_new = cursor + num_nodes_at_stage
             for i in range(num_nodes_at_stage):
                 node_id = cursor + i
-                cover = self.__cover(int(values[node_id]))
+                cover = self.__cover(values[node_id])
                 length_cover = len(cover)
                 ones = np.ones((length_cover, ), dtype=int)
                 ancestors = np.concatenate((ancestors, node_id * ones))
@@ -135,19 +138,37 @@ class MarkovChainScenarioTreeFactory:
         for stage_idx in range(self.__stopping_time, self.__num_stages):
             ancestors = np.concatenate((ancestors, range(cursor, cursor+num_nodes_at_stage)))
             cursor += num_nodes_at_stage
-            ones = np.ones((nodes_added_at_stage,), dtype=int )
+            ones = np.ones((nodes_added_at_stage,), dtype=int)
             stages = np.concatenate((stages, (1 + stage_idx) * ones))
             values = np.concatenate((values, values[-num_nodes_at_stage::]))
 
         return ancestors, values, stages
 
-    def __make_probability_values(self):
-        return 0
+    def __make_probability_values(self, ancestors, values, stages):
+        """
+        :return: probability
+        """
+        num_nonzero_init_distr = len(list(filter(lambda x: (x > 0), self.__initial_distribution)))
+        # Initialise `probs`
+        probs = np.zeros((num_nonzero_init_distr + 1,))
+        probs[0] = 1
+        probs[1:] = self.__initial_distribution[np.flatnonzero(self.__initial_distribution)]
+        num_nodes = len(values)
+        for i in range(num_nonzero_init_distr+1, num_nodes):
+            if stages[i] == self.__stopping_time+1:
+                break
+            probs_new = probs[ancestors[i]] * \
+                        self.__transition_prob[values[ancestors[i]], values[i]]
+            probs = np.concatenate((probs, [probs_new]))
+        for j in range(i, num_nodes):
+            probs_new = probs[ancestors[j]]
+            probs = np.concatenate((probs, [probs_new]))
+        return probs
 
     def create(self):
         # check input data
         ancestors, values, stages = self.__make_ancestors_values_stages()
-        probs = self.__make_probability_values()
+        probs = self.__make_probability_values(ancestors, values, stages)
         tree = ScenarioTree(stages, ancestors, probs, values)
         return tree
 

@@ -106,6 +106,8 @@ class TestScenarioTree(unittest.TestCase):
         self.assertAlmostEqual(0.2, tree.probability_of_node(6), delta=tol)
         self.assertAlmostEqual(0.3, tree.probability_of_node(7), delta=tol)
         self.assertAlmostEqual(0.005, tree.probability_of_node(8), delta=tol)
+        self.assertAlmostEqual(0.005, tree.probability_of_node(20), delta=tol)
+        self.assertAlmostEqual(0.5*0.4*0.1, tree.probability_of_node(29), delta=tol)
 
     def test_markov_siblings_of_node(self):
         tree = TestScenarioTree.__tree_from_markov
@@ -126,11 +128,13 @@ class TestScenarioTree(unittest.TestCase):
         self.assertTrue((tree.value_at_node(range(8, 20)) == tree.value_at_node(range(20, 32))).all())
 
     def test_markov_conditional_probabilities_of_children(self):
-        tol = 1e-10
+        tol = 1e-5
         tree = TestScenarioTree.__tree_from_markov
         for stage in range(tree.num_stages()):  # 0, 1, ..., N-1
             for node_idx in tree.nodes_at_stage(stage):
-                self.assertAlmostEqual(1., sum(tree.conditional_probabilities_of_children(node_idx)), tol)
+                prob_child = tree.conditional_probabilities_of_children(node_idx)
+                sum_prob = sum(prob_child)
+                self.assertAlmostEqual(1.0, sum_prob, delta=tol)
 
 
 if __name__ == '__main__':
