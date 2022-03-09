@@ -72,6 +72,15 @@ class ScenarioTree:
     def conditional_probabilities_of_children(self, node_idx):
         raise NotImplementedError()
 
+    def __str__(self):
+        return f"Scenario Tree\n+ Nodes: {self.num_nodes()}\n+ Stages: {self.num_stages()}\n" \
+               f"+ Scenarios: {len(self.nodes_at_stage(self.num_stages()))}\n" \
+               f"+ Data: {self.__data is not None}"
+
+    def __repr__(self):
+        return f"Scenario tree with {self.num_nodes()} nodes, {self.num_stages()} stages " \
+               f"and {len(self.nodes_at_stage(self.num_stages()))} scenarios"
+
 
 class MarkovChainScenarioTreeFactory:
 
