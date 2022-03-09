@@ -1,4 +1,3 @@
-import raocp.core
 import numpy as np
 import turtle
 

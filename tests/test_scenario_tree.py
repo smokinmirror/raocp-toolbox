@@ -136,6 +136,23 @@ class TestScenarioTree(unittest.TestCase):
                 sum_prob = sum(prob_child)
                 self.assertAlmostEqual(1.0, sum_prob, delta=tol)
 
+    def test_markov_conditional_probabilities_of_children_large_tree(self):
+        n, tol = 4, 1e-10
+        p = np.random.rand(n, n)
+        for i in range(n):
+            p[i, :] /= sum(p[i, :])
+        v = np.random.rand(n, )
+        v /= sum(v)
+        (N, tau) = (20, 5)
+        tree = rc.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
+        for stage in range(tree.num_stages()):  # 0, 1, ..., N-1
+            for node_idx in tree.nodes_at_stage(stage):
+                prob_child = tree.conditional_probabilities_of_children(node_idx)
+                sum_prob = sum(prob_child)
+                self.assertAlmostEqual(1.0, sum_prob, delta=tol)
+
+    def markov_read_write_data(self):
+        self.fail("not tested yet")
 
 if __name__ == '__main__':
     unittest.main()
