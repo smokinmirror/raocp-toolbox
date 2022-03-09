@@ -157,7 +157,6 @@ class MarkovChainScenarioTreeFactory:
         for i in range(num_nonzero_init_distr+1, num_nodes):
             if stages[i] == self.__stopping_time+1:
                 break
-            print(i)
             probs_new = probs[ancestors[i]] * \
                         self.__transition_prob[values[ancestors[i]], values[i]]
             probs = np.concatenate((probs, [probs_new]))

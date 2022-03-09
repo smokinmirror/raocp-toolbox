@@ -128,14 +128,13 @@ class TestScenarioTree(unittest.TestCase):
         self.assertTrue((tree.value_at_node(range(8, 20)) == tree.value_at_node(range(20, 32))).all())
 
     def test_markov_conditional_probabilities_of_children(self):
-        tol = 1e-10
+        tol = 1e-5
         tree = TestScenarioTree.__tree_from_markov
         for stage in range(tree.num_stages()):  # 0, 1, ..., N-1
             for node_idx in tree.nodes_at_stage(stage):
                 prob_child = tree.conditional_probabilities_of_children(node_idx)
                 sum_prob = sum(prob_child)
-                print("S = ", sum_prob)
-                self.assertAlmostEqual(1., sum_prob, tol)
+                self.assertAlmostEqual(1.0, sum_prob, delta=tol)
 
 
 if __name__ == '__main__':
