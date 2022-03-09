@@ -87,7 +87,7 @@ class ScenarioTree:
 
     def set_data_at_node(self, node_idx, data_dict: dict):
         if len(data_dict) > self.__allocate_data():
-            print("data exceed!")
+            raise ValueError("Data length exceeds!")
 
         def replace_data_value(data):
             for key, values in data.items():
