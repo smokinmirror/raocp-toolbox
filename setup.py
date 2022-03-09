@@ -31,11 +31,11 @@ setup(name=NAME,
       author=['Ruairi Moran', 'Zichi Zhang', 'Pantelis Sopasakis'],
       author_email='anonymous@qub.ac.uk',
       license='',
-      # packages=find_packages(
-      #     exclude=["tests", "icasadi", "templates"]),
+      packages=find_packages(
+          exclude=["tests"]),
       include_package_data=True,
       install_requires=[
-          'numpy', 'scipy'
+          'numpy', 'scipy', 'PythonTurtle'
       ],
       classifiers=[
           'Programming Language :: Python'
