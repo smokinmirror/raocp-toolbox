@@ -13,7 +13,7 @@ def _check_probability_vector(p):
 
 class ScenarioTree:
 
-    def __init__(self, stages, ancestors, probability, w_values):
+    def __init__(self, stages, ancestors, probability, w_values=None):
         """
         :param stages:
         :param ancestors:
@@ -29,6 +29,7 @@ class ScenarioTree:
         self.__children = None  # this will be updated later (the user doesn't need to provide it)
         self.__data = None  # really, any data associated with the nodes of the tree
         self.__update_children()
+        self.__allocate_data()
 
     def __num_nonleaf_nodes(self):
         return np.sum(self.__stages < self.num_stages())
@@ -38,6 +39,16 @@ class ScenarioTree:
         for i in range(self.__num_nonleaf_nodes()):
             children_of_i = np.where(self.__ancestors == i)
             self.__children += children_of_i
+
+    def __allocate_data(self):
+        n_nodes = self.num_nodes()
+        self.__data = np.zeros((n_nodes, ), dtype=dict)
+
+    def get_data_at_node(self, node_idx):
+        return self.__data[node_idx]
+
+    def set_data_at_node(self, node_idx, data_dict: dict):
+        self.__data[node_idx] = data_dict
 
     def num_nodes(self):
         return len(self.__ancestors)
