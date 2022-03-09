@@ -151,7 +151,7 @@ class TestScenarioTree(unittest.TestCase):
                 sum_prob = sum(prob_child)
                 self.assertAlmostEqual(1.0, sum_prob, delta=tol)
 
-    def markov_read_write_data(self):
+    def test_markov_read_write_data(self):
         self.fail("not tested yet")
 
 if __name__ == '__main__':
