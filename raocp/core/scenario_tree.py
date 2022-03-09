@@ -1,9 +1,11 @@
+from typing import Union, Any
+
 import numpy as np
 import turtle
 
 
 def _check_probability_vector(p):
-    if abs(sum(p)-1) >= 1e-10:
+    if abs(sum(p) - 1) >= 1e-10:
         raise ValueError("probability vector does not sum up to 1")
     if any(pi <= -1e-16 for pi in p):
         raise ValueError("probability vector contains negative entries")
@@ -41,13 +43,61 @@ class ScenarioTree:
 
     def __allocate_data(self):
         n_nodes = self.num_nodes()
-        self.__data = np.zeros((n_nodes, ), dtype=dict)
+        self.__data = np.zeros((n_nodes,), dtype=dict)
+        for i in range(n_nodes):
+            self.__data[i] = {
+                "cost": {
+                    "type": None,
+                    "Q": None,
+                    "R": None
+                },
+                "constraints": {
+                    "type": None,
+                    "x_min": None,
+                    "x_max": None,
+                    "u_min": None,
+                    "u_max": None
+                },
+                "dynamics": {
+                    "type": None,
+                    "A": None,
+                    "B": None
+                },
+                "risk": {
+                    "type": None,
+                    "alpha": None,
+                    "E": None,
+                    "F": None,
+                    "b": None
+                }
+            }
+
+        def get_num_data_values(data):
+            for key, values in data.items():
+                if type(values) == dict:
+                    get_num_data_values(values)
+                else:
+                    get_num_data_values.count += 1  # set a attribute to count the number of dict's values
+        get_num_data_values.count = 0
+        get_num_data_values(self.__data[0])
+        return get_num_data_values.count
 
     def get_data_at_node(self, node_idx):
         return self.__data[node_idx]
 
     def set_data_at_node(self, node_idx, data_dict: dict):
-        self.__data[node_idx] = data_dict
+        if len(data_dict) > self.__allocate_data():
+            print("data exceed!")
+
+        def replace_data_value(data):
+            for key, values in data.items():
+                if type(values) == dict:
+                    replace_data_value(values)
+                else:
+                    data[key] = data_dict[0]
+                    data_dict.pop(0)
+
+        replace_data_value(self.__data[node_idx])
 
     def num_nodes(self):
         return len(self.__ancestors)
@@ -154,9 +204,9 @@ class ScenarioTree:
 
         arcs = self.__draw_leaf_nodes_on_circle(t, radius, dot_size)
         radius_step = radius / self.num_stages()
-        for n in range(self.num_stages()-1, -1, -1):
+        for n in range(self.num_stages() - 1, -1, -1):
             radius -= radius_step
-            arcs = self.__draw_nonleaf_nodes_on_circle(t, radius, radius+radius_step, n, arcs, dot_size)
+            arcs = self.__draw_nonleaf_nodes_on_circle(t, radius, radius + radius_step, n, arcs, dot_size)
 
         wn.update()
 
@@ -189,14 +239,14 @@ class MarkovChainScenarioTreeFactory:
         """
         num_nonzero_init_distr = len(list(filter(lambda x: (x > 0), self.__initial_distribution)))
         # Initialise `ancestors`
-        ancestors = np.zeros((num_nonzero_init_distr+1, ), dtype=int)
+        ancestors = np.zeros((num_nonzero_init_distr + 1,), dtype=int)
         ancestors[0] = -1  # node 0 does not have an ancestor
         # Initialise `values`
-        values = np.zeros((num_nonzero_init_distr+1, ), dtype=int)
+        values = np.zeros((num_nonzero_init_distr + 1,), dtype=int)
         values[0] = -1
         values[1:] = np.flatnonzero(self.__initial_distribution)
         # Initialise `stages`
-        stages = np.ones((num_nonzero_init_distr+1, ), dtype=int)
+        stages = np.ones((num_nonzero_init_distr + 1,), dtype=int)
         stages[0] = 0
 
         cursor = 1
@@ -208,7 +258,7 @@ class MarkovChainScenarioTreeFactory:
                 node_id = cursor + i
                 cover = self.__cover(values[node_id])
                 length_cover = len(cover)
-                ones = np.ones((length_cover, ), dtype=int)
+                ones = np.ones((length_cover,), dtype=int)
                 ancestors = np.concatenate((ancestors, node_id * ones))
                 nodes_added_at_stage += length_cover
                 values = np.concatenate((values, cover))
@@ -218,7 +268,7 @@ class MarkovChainScenarioTreeFactory:
             stages = np.concatenate((stages, (1 + stage_idx) * ones))
 
         for stage_idx in range(self.__stopping_time, self.__num_stages):
-            ancestors = np.concatenate((ancestors, range(cursor, cursor+num_nodes_at_stage)))
+            ancestors = np.concatenate((ancestors, range(cursor, cursor + num_nodes_at_stage)))
             cursor += num_nodes_at_stage
             ones = np.ones((nodes_added_at_stage,), dtype=int)
             stages = np.concatenate((stages, (1 + stage_idx) * ones))
@@ -236,8 +286,8 @@ class MarkovChainScenarioTreeFactory:
         probs[0] = 1
         probs[1:] = self.__initial_distribution[np.flatnonzero(self.__initial_distribution)]
         num_nodes = len(values)
-        for i in range(num_nonzero_init_distr+1, num_nodes):
-            if stages[i] == self.__stopping_time+1:
+        for i in range(num_nonzero_init_distr + 1, num_nodes):
+            if stages[i] == self.__stopping_time + 1:
                 break
             probs_new = probs[ancestors[i]] * \
                         self.__transition_prob[values[ancestors[i]], values[i]]
@@ -253,9 +303,3 @@ class MarkovChainScenarioTreeFactory:
         probs = self.__make_probability_values(ancestors, values, stages)
         tree = ScenarioTree(stages, ancestors, probs, values)
         return tree
-
-
-
-
-
-

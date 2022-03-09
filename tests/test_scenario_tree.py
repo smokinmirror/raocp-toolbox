@@ -4,7 +4,6 @@ import numpy as np
 
 
 class TestScenarioTree(unittest.TestCase):
-
     __tree_from_markov = None
     __tree_from_iid = None
 
@@ -42,7 +41,7 @@ class TestScenarioTree(unittest.TestCase):
         self.assertEqual(3, tree.ancestor_of(10))
         self.assertEqual(5, tree.ancestor_of(13))
         for i in range(12):
-            self.assertEqual(8+i, tree.ancestor_of(20+i))
+            self.assertEqual(8 + i, tree.ancestor_of(20 + i))
 
     def test_markov_children_of(self):
         tree = TestScenarioTree.__tree_from_markov
@@ -107,7 +106,7 @@ class TestScenarioTree(unittest.TestCase):
         self.assertAlmostEqual(0.3, tree.probability_of_node(7), delta=tol)
         self.assertAlmostEqual(0.005, tree.probability_of_node(8), delta=tol)
         self.assertAlmostEqual(0.005, tree.probability_of_node(20), delta=tol)
-        self.assertAlmostEqual(0.5*0.4*0.1, tree.probability_of_node(29), delta=tol)
+        self.assertAlmostEqual(0.5 * 0.4 * 0.1, tree.probability_of_node(29), delta=tol)
 
     def test_markov_siblings_of_node(self):
         tree = TestScenarioTree.__tree_from_markov
@@ -152,7 +151,37 @@ class TestScenarioTree(unittest.TestCase):
                 self.assertAlmostEqual(1.0, sum_prob, delta=tol)
 
     def test_markov_read_write_data(self):
-        self.fail("not tested yet")
+        data = {
+            "cost": {
+                "type": "quadratic",
+                "Q": 1,
+                "R": 1
+            },
+            "constraints": {
+                "type": "polyhedral",
+                "x_min": -1,
+                "x_max": 1,
+                "u_min": -1,
+                "u_max": 1
+            },
+            "dynamics": {
+                "type": "linear",
+                "A": 1,
+                "B": 1
+            },
+            "risk": {
+                "type": "A@VR",
+                "alpha": 0.7,
+                "E": 1,
+                "F": 1,
+                "b": 1
+            }
+        }
+        data_5 = ["quadratic", 1, 1, "polyhedral", -1, 1, -1, 1, "linear", 1, 1, "A@VR", 0.7, 1, 1, 1]
+        tree = TestScenarioTree.__tree_from_markov
+        tree.set_data_at_node(5, data_5)
+        self.assertEqual(data, tree.get_data_at_node(5))
+
 
 if __name__ == '__main__':
     unittest.main()
