@@ -154,32 +154,34 @@ class TestScenarioTree(unittest.TestCase):
         data = {
             "cost": {
                 "type": "quadratic",
-                "Q": 1,
-                "R": 1
+                "Q": np.eye(4),
+                "R": np.eye(2)
             },
             "constraints": {
                 "type": "polyhedral",
-                "x_min": -1,
-                "x_max": 1,
-                "u_min": -1,
-                "u_max": 1
+                "x_min": -np.ones(4, ),
+                "x_max": np.ones(4, ),
+                "u_min": -np.ones(2, ),
+                "u_max": np.ones(2, )
             },
             "dynamics": {
                 "type": "linear",
-                "A": 1,
-                "B": 1
+                "A": np.random.rand(4, 4),
+                "B": np.random.rand(2, 4)
             },
             "risk": {
-                "type": "A@VR",
+                "type": "AV@R",
                 "alpha": 0.7,
                 "E": 1,
                 "F": 1,
-                "b": 1
+                "b": None
             }
         }
         tree = TestScenarioTree.__tree_from_markov
         tree.set_data_at_node(5, data)
         self.assertEqual(data, tree.get_data_at_node(5))
+        self.assertIsNone(tree.get_data_at_node(0))
+        self.assertIsNone(tree.get_data_at_node(4))
 
 
 if __name__ == '__main__':
