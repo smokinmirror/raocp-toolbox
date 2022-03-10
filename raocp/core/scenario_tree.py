@@ -45,9 +45,19 @@ class ScenarioTree:
         self.__data = np.empty(shape=(self.num_nodes(), ), dtype=dict)
         
     def get_data_at_node(self, node_idx):
+        """
+        :param node_idx: index of node, or range of indices
+        :return: stored data
+        """
         return self.__data[node_idx]
 
     def set_data_at_node(self, node_idx, data_dict: dict):
+        """
+        :param node_idx: node index
+        :param data_dict: a dictionary with the data to be stored at the above node
+
+        Returns `None` if no data are stored at the given node
+        """
         self.__data[node_idx] = data_dict
 
     def num_nodes(self):
