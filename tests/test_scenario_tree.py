@@ -177,9 +177,8 @@ class TestScenarioTree(unittest.TestCase):
                 "b": 1
             }
         }
-        data_5 = ["quadratic", 1, 1, "polyhedral", -1, 1, -1, 1, "linear", 1, 1, "A@VR", 0.7, 1, 1, 1]
         tree = TestScenarioTree.__tree_from_markov
-        tree.set_data_at_node(5, data_5)
+        tree.set_data_at_node(5, data)
         self.assertEqual(data, tree.get_data_at_node(5))
 
 

@@ -42,62 +42,13 @@ class ScenarioTree:
             self.__children += children_of_i
 
     def __allocate_data(self):
-        n_nodes = self.num_nodes()
-        self.__data = np.zeros((n_nodes,), dtype=dict)
-        for i in range(n_nodes):
-            self.__data[i] = {
-                "cost": {
-                    "type": None,
-                    "Q": None,
-                    "R": None
-                },
-                "constraints": {
-                    "type": None,
-                    "x_min": None,
-                    "x_max": None,
-                    "u_min": None,
-                    "u_max": None
-                },
-                "dynamics": {
-                    "type": None,
-                    "A": None,
-                    "B": None
-                },
-                "risk": {
-                    "type": None,
-                    "alpha": None,
-                    "E": None,
-                    "F": None,
-                    "b": None
-                }
-            }
-
-        def get_num_data_values(data):
-            for key, values in data.items():
-                if type(values) == dict:
-                    get_num_data_values(values)
-                else:
-                    get_num_data_values.count += 1  # set a attribute to count the number of dict's values
-        get_num_data_values.count = 0
-        get_num_data_values(self.__data[0])
-        return get_num_data_values.count
-
+        self.__data = np.empty(shape=(self.num_nodes(), ), dtype=dict)
+        
     def get_data_at_node(self, node_idx):
         return self.__data[node_idx]
 
     def set_data_at_node(self, node_idx, data_dict: dict):
-        if len(data_dict) != self.__allocate_data():
-            raise ValueError("Wrong Data length!")
-
-        def replace_data_value(data):
-            for key, values in data.items():
-                if type(values) == dict:
-                    replace_data_value(values)
-                else:
-                    data[key] = data_dict[0]
-                    data_dict.pop(0)
-
-        replace_data_value(self.__data[node_idx])
+        self.__data[node_idx] = data_dict
 
     def num_nodes(self):
         return len(self.__ancestors)
