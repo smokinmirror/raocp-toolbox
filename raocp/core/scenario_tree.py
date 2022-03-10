@@ -11,6 +11,9 @@ def _check_probability_vector(p):
 
 
 class ScenarioTree:
+    """
+    Scenario tree
+    """
 
     def __init__(self, stages, ancestors, probability, w_values=None):
         """
@@ -50,37 +53,75 @@ class ScenarioTree:
         self.__data[node_idx] = data_dict
 
     def num_nodes(self):
+        """
+        :return: total number of nodes of the tree
+        """
         return len(self.__ancestors)
 
     def num_stages(self):
+        """
+        :return: number of stages
+        """
         return self.__stages[-1]
 
     def ancestor_of(self, node_idx):
+        """
+        :param node_idx: node index
+        :return: index of ancestor node
+        """
         return self.__ancestors[node_idx]
 
     def children_of(self, node_idx):
+        """
+        :param node_idx: node index
+        :return: list of children of given node
+        """
         return self.__children[node_idx]
 
     def stage_of(self, node_idx):
+        """
+        :param node_idx: node index
+        :return: stage of given node
+        """
         if node_idx < 0:
             raise ValueError("node_idx cannot be <0")
         return self.__stages[node_idx]
 
     def value_at_node(self, node_idx):
+        """
+        :param node_idx: node index
+        :return: value of the disturbance (`w`) at the given node (if any)
+        """
         return self.__w_idx[node_idx]
 
     def nodes_at_stage(self, stage_idx):
+        """
+        :param stage_idx: index of stage
+        :return: array of node indices at given stage
+        """
         return np.where(self.__stages == stage_idx)[0]
 
     def probability_of_node(self, node_idx):
+        """
+        :param node_idx: node index
+        :return: probability to visit the given node
+        """
         return self.__probability[node_idx]
 
     def siblings_of_node(self, node_idx):
+        """
+        :param node_idx: node index
+        :return: array of siblings of given node (including the given node)
+        """
         if node_idx == 0:
             return [0]
         return self.children_of(self.ancestor_of(node_idx))
 
     def conditional_probabilities_of_children(self, node_idx):
+        """
+        :param node_idx: node index
+        :return: array of conditional probabilities of the children of a given node
+        """
         prob_node_idx = self.probability_of_node(node_idx)
         children = self.children_of(node_idx)
         prob_children = self.__probability[children]
@@ -147,6 +188,13 @@ class ScenarioTree:
         return arcs
 
     def bulls_eye_plot(self, dot_size=5, radius=300, filename=None):
+        """
+        Bull's eye plot of scenario tree
+
+        :param dot_size: size of node [default: 5]
+        :param radius: radius of largest circle [default: 300]
+        :param filename: name of file, with .eps extension, to save the plot [default: None]
+        """
         wn = turtle.Screen()
         wn.tracer(0)
         t = turtle.Turtle(visible=False)
@@ -166,8 +214,17 @@ class ScenarioTree:
 
 
 class MarkovChainScenarioTreeFactory:
+    """
+    Factory class to construct scenario trees from stopped Markov chains
+    """
 
     def __init__(self, transition_prob, initial_distribution, num_stages, stopping_time=None):
+        """
+        :param transition_prob: transition matrix of the Markov chain
+        :param initial_distribution: initial distribution of `w`
+        :param num_stages: total number of stages or horizon of the scenario tree
+        :param stopping_time: stopping time, which much be no larger than the number of stages [default: None]
+        """
         if stopping_time is None:
             stopping_time = num_stages
         self.__transition_prob = transition_prob
@@ -248,6 +305,9 @@ class MarkovChainScenarioTreeFactory:
         return probs
 
     def create(self):
+        """
+        Creates a scenario tree from the given Markov chain
+        """
         # check input data
         ancestors, values, stages = self.__make_ancestors_values_stages()
         probs = self.__make_probability_values(ancestors, values, stages)
