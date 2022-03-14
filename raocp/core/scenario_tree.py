@@ -12,6 +12,12 @@ def _check_probability_vector(p):
     return True
 
 
+def _check_stopping_time(n, t):
+    if t > n:
+        raise ValueError("stopping time greater than number of stages")
+    return True
+
+
 class ScenarioTree:
     """
     Scenario tree creation and visualisation
@@ -239,6 +245,8 @@ class MarkovChainScenarioTreeFactory:
         """
         if stopping_time is None:
             stopping_time = num_stages
+        else:
+            _check_stopping_time(num_stages, stopping_time)
         self.__transition_prob = transition_prob
         self.__initial_distribution = initial_distribution
         self.__num_stages = num_stages

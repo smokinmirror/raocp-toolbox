@@ -183,6 +183,17 @@ class TestScenarioTree(unittest.TestCase):
         self.assertIsNone(tree.get_data_at_node(0))
         self.assertIsNone(tree.get_data_at_node(4))
 
+    def test_stopping_stage_failure(self):
+        n = 3
+        p = np.random.rand(n, n)
+        for i in range(n):
+            p[i, :] /= sum(p[i, :])
+        v = np.random.rand(n, )
+        v /= sum(v)
+        (N, tau) = (4, 5)
+        with self.assertRaises(ValueError):
+            _ = rc.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
+
 
 if __name__ == '__main__':
     unittest.main()
