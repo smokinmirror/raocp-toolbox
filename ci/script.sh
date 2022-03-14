@@ -20,7 +20,7 @@ regular_test() {
     # --- upgrade pip within venv
     pip install --upgrade pip
 
-    # --- install opengen
+    # --- install raocp-toolbox
     pip install .
 
     # --- run the tests

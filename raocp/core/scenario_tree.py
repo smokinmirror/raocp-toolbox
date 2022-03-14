@@ -14,15 +14,15 @@ def _check_probability_vector(p):
 
 class ScenarioTree:
     """
-    Scenario tree
+    Scenario tree creation and visualisation
     """
 
     def __init__(self, stages, ancestors, probability, w_values=None):
         """
-        :param stages:
-        :param ancestors:
-        :param probability:
-        :param w_values: values of w at each node
+        :param stages: integer number of total tree stages (N+1)
+        :param ancestors: array where `array position=node number` and `value at position=node ancestor`
+        :param probability: array where `array position=node number` and `value at position=probability node occurs`
+        :param w_values: array where `array position=node number` and `value at position=value of w`
 
         Note: avoid using this constructor directly; use a factory instead
         """
@@ -51,6 +51,8 @@ class ScenarioTree:
         """
         :param node_idx: index of node, or range of indices
         :return: stored data
+
+        Returns `None` if no data are stored at the given node
         """
         return self.__data[node_idx]
 
@@ -58,8 +60,7 @@ class ScenarioTree:
         """
         :param node_idx: node index
         :param data_dict: a dictionary with the data to be stored at the above node
-
-        Returns `None` if no data are stored at the given node
+        :return: nothing
         """
         self.__data[node_idx] = data_dict
 
@@ -234,7 +235,7 @@ class MarkovChainScenarioTreeFactory:
         :param transition_prob: transition matrix of the Markov chain
         :param initial_distribution: initial distribution of `w`
         :param num_stages: total number of stages or horizon of the scenario tree
-        :param stopping_time: stopping time, which much be no larger than the number of stages [default: None]
+        :param stopping_time: stopping time, which must be no larger than the number of stages [default: None]
         """
         if stopping_time is None:
             stopping_time = num_stages
