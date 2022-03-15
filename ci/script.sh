@@ -12,7 +12,7 @@ regular_test() {
     pip install virtualenv
 
     # --- create virtualenv
-    virtualenv -p python3.8 venv
+    virtualenv -p python3.10 venv
 
     # --- activate venv
     source venv/bin/activate
