@@ -6,7 +6,7 @@ regular_test() {
     # ------------------------------------
 
     # --- create virtual environment
-    cd ..
+    # cd ..
     export PYTHONPATH=.
 
     # --- install virtualenv
