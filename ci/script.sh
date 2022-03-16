@@ -15,7 +15,7 @@ regular_test() {
     virtualenv -p python3.10 venv
 
     # --- activate venv
-    source venv/Scripts/activate
+    source venv/bin/activate
 
     # --- upgrade pip within venv
     pip install --upgrade pip
