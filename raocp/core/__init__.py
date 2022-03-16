@@ -1,3 +1,3 @@
 from .scenario_tree import *
 
-from .bogus import import *
+from .bogus import *
