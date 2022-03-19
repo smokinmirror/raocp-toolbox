@@ -41,12 +41,9 @@ class ScenarioTree:
         self.__update_children()
         self.__allocate_data()
 
-    def __num_nonleaf_nodes(self):
-        return np.sum(self.__stages < self.num_stages())
-
     def __update_children(self):
         self.__children = []
-        for i in range(self.__num_nonleaf_nodes()):
+        for i in range(self.num_nonleaf_nodes()):
             children_of_i = np.where(self.__ancestors == i)
             self.__children += children_of_i
 
@@ -69,6 +66,9 @@ class ScenarioTree:
         :return: nothing
         """
         self.__data[node_idx] = data_dict
+
+    def num_nonleaf_nodes(self):
+        return np.sum(self.__stages < self.num_stages())
 
     def num_nodes(self):
         """
