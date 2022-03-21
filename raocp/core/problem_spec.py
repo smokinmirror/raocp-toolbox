@@ -56,6 +56,12 @@ class RAOCP:
         self.__b = b
         self.__risk = None
 
+    def __str__(self):
+        return f"RAOCP\n+ Nodes: {self.__last_leaf_node}"
+
+    def __repr__(self):
+        return f"RAOCP with {self.__last_leaf_node} nodes"
+
 
 class RAOCPconfig:
     """
