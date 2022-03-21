@@ -25,7 +25,7 @@ class RAOCP:
         :param alpha: list of risk parameter at each node
         :param E: list of E matrix for each node
         :param F: list of F matrix for each node
-        :param Kone: list of Kone for each node
+        :param Kone: list of cloco cone K for each node
         :param b: list of b vector for each node
 
         Note: ambiguity sets of coherent risk measures can be expressed by conic inequalities,
@@ -254,7 +254,7 @@ class RAOCPfactory:
         :param alpha: list of risk parameter at each node
         :param E: list of E matrix for each node
         :param F: list of F matrix for each node
-        :param Kone: list of Kone for each node
+        :param Kone: list of cloco cone K for each node
         :param b: list of b vector for each node
         """
         self.__config = problem_config

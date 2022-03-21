@@ -40,7 +40,10 @@ cost_type = "quadratic"
 (Q, R, Pf) = (np.eye(2), np.eye(2), np.eye(2))
 
 (risk_type, alpha) = ("AVAR", 0.5)
-(E, F, Kone, b) = (np.eye(2), np.eye(2), 0, np.ones((2, 1)))
+(E, F, Kone, b) = (np.eye(2),  # p x n matrix
+                   np.eye(2),  # p x r matrix
+                   "Rn+",
+                   np.ones((2, 1)))  # p vector
 
 problem_config = r.core.RAOCPconfig(scenario_tree=tree)\
     .with_possible_As_and_Bs(As, Bs)\
