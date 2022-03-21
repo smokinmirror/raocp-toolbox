@@ -218,17 +218,21 @@ class RAOCPconfig:
 
 
 def _check_lengths(num_nonleaf_nodes, num_nodes, A, B, cost_type, Q, R, Pf, risk_type, alpha, E, F, Kone, b):
-    pass  # make sure all the lists going to RAOCP are the correct length
-    if len(A) != num_nodes:
-        raise ValueError("incorrect dimension in list A, len(A) = ", len(A), " , number of nodes = ", num_nodes)
-    if len(B) != num_nodes:
-        raise ValueError("incorrect dimension in list B, len(B) = ", len(B), " , number of nodes = ", num_nodes)
-    return True
+    all_nodes = ["A", "B", "cost_type", "Q", "R", "Pf"]
+    nonleaf_nodes = ["risk_type", "alpha", "E", "F", "Kone", "b"]
+    for name in all_nodes:
+        if len(eval(name)) != num_nodes:
+            raise ValueError('incorrect dimension in list `%s`, len(%s) = %d, number of nodes = %d'
+                             % (name, name, len(eval(name)), num_nodes))
+    for name in nonleaf_nodes:
+        if len(eval(name)) != num_nonleaf_nodes:
+            raise ValueError('incorrect dimension in list `%s`, len(%s) = %d, number of nonleaf nodes = %d'
+                             % (name, name, len(eval(name)), num_nonleaf_nodes))
 
 
-class MarkovChainRAOCPFactory:
+class RAOCPfactory:
     """
-    Factory class to construct risk-averse optimal control problem from stopped Markov chains
+    Factory class to construct risk-averse optimal control problem.
 
     Problem lists are either generated using the `RAOCPconfig` class or supplied to this factory. Lists
     supplied to the factory take priority over `RAOCPconfig` generated lists.

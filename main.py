@@ -2,6 +2,8 @@ import raocp as r
 import numpy as np
 
 
+# ScenarioTree generation ----------------------------------------------------------------------------------------------
+
 p = np.array([[0.1, 0.8, 0.1],
               [0.4, 0.6, 0],
               [0, 0.3, 0.7]])
@@ -20,7 +22,7 @@ tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
 #
 # print(tree)
 
-# RAOCP generation ----------------------------------------------------------------------------------------------
+# RAOCP generation -----------------------------------------------------------------------------------------------------
 
 x0 = np.array([[1], [1]])
 
@@ -45,4 +47,4 @@ problem_config = r.core.RAOCPconfig(scenario_tree=tree)\
     .with_all_cost_type(cost_type).with_all_Q(Q).with_all_R(R).with_all_Pf(Pf)\
     .with_all_risk_type(risk_type).with_all_alpha(alpha).with_all_E(E).with_all_F(F).with_all_Kone(Kone).with_all_b(b)
 
-problem = r.core.MarkovChainRAOCPFactory(problem_config=problem_config, root_state=x0).create()
+problem = r.core.RAOCPfactory(problem_config=problem_config, root_state=x0).create()
