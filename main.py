@@ -20,22 +20,29 @@ tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
 #
 # print(tree)
 
+# RAOCP generation ----------------------------------------------------------------------------------------------
+
 x0 = np.array([[1], [1]])
 
-Aw1 = np.array([[1, 1], [1, 1]])
-Aw2 = np.array([[1, 1], [1, 1]])
-Aw3 = np.array([[1, 1], [1, 1]])
+Aw1 = np.eye(2)
+Aw2 = np.eye(2)
+Aw3 = np.eye(2)
 As = [Aw1, Aw2, Aw3]
 
-Bw1 = np.array([[1, 1], [1, 1]])
-Bw2 = np.array([[1, 1], [1, 1]])
-Bw3 = np.array([[1, 1], [1, 1]])
+Bw1 = np.eye(2)
+Bw2 = np.eye(2)
+Bw3 = np.eye(2)
 Bs = [Bw1, Bw2, Bw3]
 
-problem_config = r.core.RAOCPconfig(scenario_tree=tree)\
-    .with_As(As)\
-    .with_Bs(Bs)\
-    .with_all_cost_type("quadratic")\
-    .with_all_risk_type("AVAR")
+cost_type = "quadratic"
+(Q, R, Pf) = (np.eye(2), np.eye(2), np.eye(2))
 
-problem = r.core.MarkovChainRAOCPFactory(problem_config=problem_config, root_state=x0, As=None, Bs=None).create()
+(risk_type, alpha) = ("AVAR", 0.5)
+(E, F, Kone, b) = (np.eye(2), np.eye(2), 0, np.ones((2, 1)))
+
+problem_config = r.core.RAOCPconfig(scenario_tree=tree)\
+    .with_possible_As_and_Bs(As, Bs)\
+    .with_all_cost_type(cost_type).with_all_Q(Q).with_all_R(R).with_all_Pf(Pf)\
+    .with_all_risk_type(risk_type).with_all_alpha(alpha).with_all_E(E).with_all_F(F).with_all_Kone(Kone).with_all_b(b)
+
+problem = r.core.MarkovChainRAOCPFactory(problem_config=problem_config, root_state=x0).create()
