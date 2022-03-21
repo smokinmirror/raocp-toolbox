@@ -150,20 +150,14 @@ class MarkovChainRAOCPFactory:
                                      [1, 1]])]
         input_dynamics = [np.array([[1, 1],
                                     [1, 1]])]
-        Q = [np.array([[1, 1],
-                       [1, 1]])]
-        R = [np.array([[1, 1],
-                       [1, 1]])]
-        Pf = [np.array([[1, 1],
-                        [1, 1]])]
+        Q = [np.eye(2)]
+        R = [np.eye(2)]
+        Pf = [np.eye(2)]
         alpha = [0.5]
-        E = [np.array([[1, 1],
-                       [1, 1]])]
-        F = [np.array([[1, 1],
-                       [1, 1]])]
+        E = [np.eye(2)]
+        F = [np.eye(2)]
         Kone = [0]
-        b = [np.array([[1],
-                       [1]])]
+        b = [np.ones((2, 1))]
 
         problem = RAOCP(self.__config.num_nonleaf_nodes, self.__config.num_nodes,
                         state, ip, system_dynamics, input_dynamics,
