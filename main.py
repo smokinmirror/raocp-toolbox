@@ -24,8 +24,8 @@ tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
 
 # RAOCP generation -----------------------------------------------------------------------------------------------------
 
-x0 = np.array([[1],
-               [1]])  # n vector
+root_state = np.array([[1],
+                       [1]])  # n vector
 
 Aw1 = np.eye(2)
 Aw2 = 2*np.eye(2)
@@ -45,14 +45,15 @@ Pf = 5*np.eye(2)  # n x n matrix
 (risk_type, alpha) = ("AVAR", 0.5)
 E = np.eye(2)  # p x n matrix (mu is in R^n)
 F = np.eye(2)  # p x r matrix
-Kone = "Rn+"
+cone = "Rn+"
 b = np.ones((2, 1))  # p vector
 
-problem_config = r.core.RAOCPconfig(scenario_tree=tree)\
+problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
+    .with_root_state(root_state)\
     .with_possible_As_and_Bs(As, Bs)\
     .with_all_cost_type(cost_type).with_all_Q(Q).with_all_R(R).with_all_Pf(Pf)\
-    .with_all_risk_type(risk_type).with_all_alpha(alpha).with_all_E(E).with_all_F(F).with_all_Kone(Kone).with_all_b(b)
-
-problem = r.core.RAOCPfactory(problem_config=problem_config, root_state=x0).create()
+    .with_all_risk_type(risk_type).with_all_alpha(alpha).with_all_E(E).with_all_F(F).with_all_cone(cone).with_all_b(b)\
+    .create()
 
 print(problem)
+print(problem.A_at_node(4))
