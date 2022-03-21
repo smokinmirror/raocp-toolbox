@@ -37,8 +37,8 @@ class RAOCP:
         self.__last_leaf_node = last_leaf_node
         # System
         self.__root_state = root_state
-        self.__system_dynamics = system_dynamics
-        self.__input_dynamics = input_dynamics
+        self.__A = system_dynamics
+        self.__B = input_dynamics
         self.__state = None
         self.__input = None
         # Cost
@@ -55,6 +55,47 @@ class RAOCP:
         self.__Kone = Kone
         self.__b = b
         self.__risk = None
+
+    # GETTERS
+    @property
+    def num_nonleaf_nodes(self):
+        """Total number of nonleaf nodes"""
+        return self.__last_nonleaf_node
+
+    @property
+    def num_nodes(self):
+        """Total number of nodes"""
+        return self.__last_leaf_node
+
+    # Setters
+    def update_state_at_node(self, idx, state):
+        """
+        :param idx: node index
+        :param state: calculated state at node idx or new root node state
+        :return: nothing
+        """
+        self.__state[idx] = state
+
+    # update input at idx
+
+    def update_cost_at_node(self, idx, cost):
+        """
+        :param idx: node index
+        :param cost: calculated cost at node idx
+        :return: nothing
+        """
+        self.__cost[idx] = cost
+
+    # update risk at idx
+
+    def A_at_node(self, idx):
+        """
+        :param idx: node index
+        :return: A matrix at node idx
+        """
+        return self.__A[idx]
+
+    # B_at_node() ...
 
     def __str__(self):
         return f"RAOCP\n+ Nodes: {self.__last_leaf_node}"
@@ -86,7 +127,7 @@ class RAOCPconfig:
     @property
     def num_nonleaf_nodes(self):
         """Total number of nonleaf nodes"""
-        return self.__tree.num_nonleaf_nodes()
+        return self.__tree.num_nonleaf_nodes
 
     @property
     def num_nodes(self):
@@ -291,36 +332,3 @@ class RAOCPfactory:
                         self.__cost_type, self.__Q, self.__R, self.__Pf,
                         self.__risk_type, self.__alpha, self.__E, self.__F, self.__Kone, self.__b)
         return problem
-
-    # def __make_cost(self):
-    #     """
-    #     :return: cost
-    #     """
-    #     if self.__data["cost"]["type"] == "quadratic":
-    #         cost = self.__x_current.T @ self.__data["cost"]["Q"] @ self.__x_current \
-    #                + self.__u_current.T @ self.__data["cost"]["R"] @ self.__u_current
-    #     else:
-    #         raise ValueError("cost type is not quadratic!")
-    #     return cost
-    #
-    # def __make_linear_func(self):
-    #     """
-    #     :return: linear result
-    #     """
-    #     if self.__data["dynamics"]["type"] == "affine":
-    #         x_next = self.__data["dynamics"]["A"] @ self.__x_current + \
-    #                  self.__data["dynamics"]["B"] @ self.__u_current + self.__w_value
-    #     elif self.__data["dynamics"]["type"] == "linear":
-    #         x_next = self.__data["dynamics"]["A"] @ self.__x_current + self.__w_value
-    #     else:
-    #         raise ValueError("dynamics type is not affine or linear!")
-    #     return x_next
-    #
-    # def __make_risk_value(self):
-    #     """
-    #     :return: risk results
-    #     """
-    #     if self.__data["risk"]["type"] == "AV@R":
-    #         raise NotImplementedError()
-    #     else:
-    #         raise ValueError("risk type is not AV@R!")
