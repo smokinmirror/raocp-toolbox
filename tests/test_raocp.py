@@ -24,26 +24,30 @@ class TestRAOCP(unittest.TestCase):
     def __construct_raocp_from_markov():
         if TestRAOCP.__raocp_from_markov is None:
             tree = TestRAOCP.__tree_from_markov
-            x0 = np.array([[1], [1]])
+
+            x0 = np.array([[1],
+                           [1]])  # n vector
 
             Aw1 = np.eye(2)
-            Aw2 = np.eye(2)
-            Aw3 = np.eye(2)
-            As = [Aw1, Aw2, Aw3]
+            Aw2 = 2 * np.eye(2)
+            Aw3 = 3 * np.eye(2)
+            As = [Aw1, Aw2, Aw3]  # n x n matrices
 
             Bw1 = np.eye(2)
-            Bw2 = np.eye(2)
-            Bw3 = np.eye(2)
-            Bs = [Bw1, Bw2, Bw3]
+            Bw2 = 2 * np.eye(2)
+            Bw3 = 3 * np.eye(2)
+            Bs = [Bw1, Bw2, Bw3]  # n x u matrices
 
             cost_type = "quadratic"
-            (Q, R, Pf) = (np.eye(2), np.eye(2), np.eye(2))
+            Q = 10 * np.eye(2)  # n x n matrix
+            R = np.eye(2)  # u x u matrix OR scalar
+            Pf = 5 * np.eye(2)  # n x n matrix
 
             (risk_type, alpha) = ("AVAR", 0.5)
-            (E, F, Kone, b) = (np.eye(2),  # p x n matrix
-                               np.eye(2),  # p x r matrix
-                               "Rn+",
-                               np.ones((2, 1)))  # p vector
+            E = np.eye(2)  # p x n matrix (mu is in R^n)
+            F = np.eye(2)  # p x r matrix
+            Kone = "Rn+"
+            b = np.ones((2, 1))  # p vector
 
             TestRAOCP.__raocp_config = rc.RAOCPconfig(scenario_tree=tree) \
                 .with_possible_As_and_Bs(As, Bs) \
@@ -59,4 +63,30 @@ class TestRAOCP(unittest.TestCase):
         TestRAOCP.__construct_tree_from_markov()
         TestRAOCP.__construct_raocp_from_markov()
 
+    def test_A_B_at_node(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_config
+        Aw1 = np.eye(2)
+        Aw2 = 2 * np.eye(2)
+        Aw3 = 3 * np.eye(2)
+        test_As = [Aw1, Aw2, Aw3]  # n x n matrices
 
+        Bw1 = np.eye(2)
+        Bw2 = 2 * np.eye(2)
+        Bw3 = 3 * np.eye(2)
+        test_Bs = [Bw1, Bw2, Bw3]  # n x u matrices
+
+        A = raocp.A
+        B = raocp.B
+        num_nodes = tree.num_nodes()
+        for i_node in range(1, num_nodes):
+            w_value_at_node = tree.value_at_node(i_node)
+            test_A_at_node = test_As[w_value_at_node]
+            A_at_node = A[i_node]
+
+            test_B_at_node = test_Bs[w_value_at_node]
+            B_at_node = B[i_node]
+            for row in range(test_A_at_node.shape[0]):
+                for column in range(test_A_at_node.shape[1]):
+                    self.assertEqual(test_A_at_node[row, column], A_at_node[row, column])
+                    self.assertEqual(test_B_at_node[row, column], B_at_node[row, column])
