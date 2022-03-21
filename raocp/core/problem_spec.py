@@ -110,13 +110,13 @@ class RAOCPconfig:
 
     def with_all_cost_type(self, cost_type):
         self.__cost_type = []
-        for i in range(self.__tree.num_nodes()):
+        for i in range(self.__tree.num_nodes()+1):
             self.__cost_type.append(cost_type)
         return self
 
     def with_all_risk_type(self, risk_type):
         self.__risk_type = []
-        for i in range(self.__tree.num_nodes()):
+        for i in range(self.__tree.num_nonleaf_nodes()+1):
             self.__risk_type.append(risk_type)
         return self
 
