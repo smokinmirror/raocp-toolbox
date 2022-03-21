@@ -36,17 +36,16 @@ class RAOCP:
         self.__last_nonleaf_node = last_nonleaf_node
         self.__last_leaf_node = last_leaf_node
         # System
-        self.__root_state = root_state
         self.__A = system_dynamics
         self.__B = input_dynamics
-        self.__state = None
-        self.__input = None
+        self.__state = [root_state]
+        self.__input = []
         # Cost
         self.__cost_type = cost_type
         self.__Q = Q
         self.__R = R
         self.__Pf = Pf
-        self.__cost = None
+        self.__cost = []
         # Risk
         self.__risk_type = risk_type
         self.__alpha = alpha
@@ -54,7 +53,7 @@ class RAOCP:
         self.__F = F
         self.__Kone = Kone
         self.__b = b
-        self.__risk = None
+        self.__risk = []
 
     # GETTERS
     @property
@@ -264,17 +263,19 @@ class RAOCPconfig:
         return self
 
 
-def _check_lengths(num_nonleaf_nodes, num_nodes, A, B, cost_type, Q, R, Pf, risk_type, alpha, E, F, Kone, b):
+def _check_lengths(nonleaf_nodes_num, total_nodes_num, A, B, cost_type, Q, R, Pf, risk_type, alpha, E, F, Kone, b):
     all_nodes = ["A", "B", "cost_type", "Q", "R", "Pf"]
     nonleaf_nodes = ["risk_type", "alpha", "E", "F", "Kone", "b"]
     for name in all_nodes:
-        if len(eval(name)) != num_nodes:
+        length = len(eval(name))
+        if length != total_nodes_num:
             raise ValueError('incorrect dimension in list `%s`, len(%s) = %d, number of nodes = %d'
-                             % (name, name, len(eval(name)), num_nodes))
+                             % (name, name, length, total_nodes_num))
     for name in nonleaf_nodes:
-        if len(eval(name)) != num_nonleaf_nodes:
+        length = len(eval(name))
+        if length != nonleaf_nodes_num():
             raise ValueError('incorrect dimension in list `%s`, len(%s) = %d, number of nonleaf nodes = %d'
-                             % (name, name, len(eval(name)), num_nonleaf_nodes))
+                             % (name, name, length, nonleaf_nodes_num()))
 
 
 class RAOCPfactory:
