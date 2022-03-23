@@ -156,7 +156,7 @@ class MarkovChainRAOCPProblemBuilder:
         match cost_type:
             case "quadratic":
                 for i in range(self.__tree.num_nodes()):
-                    self.__cost_item.append(core_costs.Quadratic(Q, R, Pf))
+                    self.__cost_item.append(core_costs.Quadratic(Q, R, Pf, i))
                 return self
             case _:
                 raise ValueError('cost type %s not supported' % cost_type)
