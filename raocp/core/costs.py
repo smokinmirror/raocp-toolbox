@@ -18,16 +18,8 @@ class Quadratic:
         self.__Pf = Pf
         self.__node = node
 
-    def get_cost(self, x, u=None):
-        """For calculating cost at any node
-
-        If an input (u) is not given, then it is a leaf node cost = x' Pf x.
-        If an input (u) is given, then it is a nonleaf node cost = x' Q x + u' R u.
-        """
-        if u is None:
-            return x.T @ self.__Pf @ x
-        else:
-            return x.T @ self.__Q @ x + u.T @ self.__R @ u
+    def get_cost(self):
+        pass
 
     # GETTERS
     @property

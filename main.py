@@ -1,6 +1,6 @@
 import raocp as r
 import numpy as np
-
+import raocp.core.cones as core_cones
 
 # ScenarioTree generation ----------------------------------------------------------------------------------------------
 
@@ -39,15 +39,13 @@ Q = 10*np.eye(2)  # n x n matrix
 R = np.eye(2)  # u x u matrix OR scalar
 Pf = 5*np.eye(2)  # n x n matrix
 
-(risk_type, alpha) = ("AVaR", 0.5)
-
+(risk_type, alpha, cone_type, cone_dim) = ("AVaR", 0.5, "PosOvth", 3)
 problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
     .with_possible_As_and_Bs(As, Bs)\
     .with_all_cost(cost_type, Q, R, Pf)\
-    .with_all_risk(risk_type, alpha)\
+    .with_all_risk(risk_type, alpha, cone_type, cone_dim)\
     .create()
 
 print(problem)
-x0 = np.array([[-1],
-               [2]])
-print(problem.cost_item_at_node(0).get_cost(x0))
+print(problem.A_at_node(4))
+
