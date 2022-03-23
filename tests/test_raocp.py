@@ -40,7 +40,7 @@ class TestRAOCP(unittest.TestCase):
             R = np.eye(2)  # u x u matrix OR scalar
             Pf = 5 * np.eye(2)  # n x n matrix
 
-            (risk_type, alpha, cone_type, cone_dim) = ("AVaR", 0.5, "PosOrth", 3)
+            (risk_type, alpha, cone_type, cone_dim) = ("AVaR", 0.5, "PosOvth", 3)
 
             TestRAOCP.__raocp_from_markov = rc.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
                 .with_possible_As_and_Bs(As, Bs)\

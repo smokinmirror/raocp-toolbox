@@ -31,7 +31,6 @@ class AVaR:
         eye = np.eye(self.__num_children)
         self.__e = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
         self.__b = np.vstack((self.__pi, np.zeros((self.__num_children, 1)), 1))
-        # self.__cone = cone
 
     # GETTERS
     @property
