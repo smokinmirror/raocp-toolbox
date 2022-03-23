@@ -1,4 +1,6 @@
 import raocp.core.scenario_tree as core_tree
+import raocp.core.costs as core_costs
+import raocp.core.risks as core_risks
 
 
 def _check_lengths(nonleaf_nodes_num, total_nodes_num, A, B, cost_item, risk_item):
@@ -37,8 +39,8 @@ class RAOCP:
         Note: avoid using this constructor directly; use the builder instead
         """
         # Nodes
-        self.__last_nonleaf_node = last_nonleaf_node
-        self.__last_leaf_node = last_leaf_node
+        self.__num_nonleaf_node = last_nonleaf_node
+        self.__num_leaf_node = last_leaf_node
         # System
         self.__A = system_dynamics
         self.__B = input_dynamics
@@ -55,12 +57,12 @@ class RAOCP:
     @property
     def num_nonleaf_nodes(self):
         """Total number of nonleaf nodes"""
-        return self.__last_nonleaf_node
+        return self.__num_nonleaf_node
 
     @property
     def num_nodes(self):
         """Total number of nodes"""
-        return self.__last_leaf_node
+        return self.__num_leaf_node
 
     def A_at_node(self, idx):
         """
@@ -120,13 +122,13 @@ class RAOCP:
         self.__risk_value = risk_value
 
     def __str__(self):
-        return f"RAOCP\n+ Nodes: {self.__last_leaf_node}\n" \
-               f"+ Root cost type: {self.__cost_item[0]}\n" \
-               f"+ Root risk type: {self.__risk_item[0]}"
+        return f"RAOCP\n+ Nodes: {self.__num_leaf_node}\n" \
+               f"+ {self.__cost_item[0]}\n" \
+               f"+ {self.__risk_item[0]}"
 
     def __repr__(self):
-        return f"RAOCP with {self.__last_leaf_node} nodes, root cost: {self.__cost_item[0].type}, " \
-               f"root risk: {self.__risk_item[0].type}."
+        return f"RAOCP with {self.__num_leaf_node} nodes, root cost: {self.__cost_item[0].type()}, " \
+               f"root risk: {self.__risk_item[0].type()}."
 
 
 class MarkovChainRAOCPProblemBuilder:
@@ -154,7 +156,7 @@ class MarkovChainRAOCPProblemBuilder:
         match cost_type:
             case "quadratic":
                 for i in range(self.__tree.num_nodes()):
-                    self.__cost_item.append(core_costs.Quadratic(cost_type, Q, R, Pf))
+                    self.__cost_item.append(core_costs.Quadratic(Q, R, Pf))
                 return self
             case _:
                 raise ValueError('cost type %s not supported' % cost_type)
@@ -163,8 +165,10 @@ class MarkovChainRAOCPProblemBuilder:
         self.__risk_item = []
         match risk_type:
             case "AVaR":
-                for i in range(self.__tree.num_nodes()):
-                    self.__risk_item.append(core_risks.AVaR(risk_type, alpha))
+                for i in range(self.__tree.num_nonleaf_nodes()):
+                    self.__risk_item.append(core_risks.AVaR(alpha,
+                                                            self.__tree.conditional_probabilities_of_children(i),
+                                                            i))
                 return self
             case _:
                 raise ValueError('risk type %s not supported' % risk_type)

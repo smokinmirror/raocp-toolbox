@@ -39,7 +39,7 @@ Q = 10*np.eye(2)  # n x n matrix
 R = np.eye(2)  # u x u matrix OR scalar
 Pf = 5*np.eye(2)  # n x n matrix
 
-(risk_type, alpha) = ("AVAR", 0.5)
+(risk_type, alpha) = ("AVaR", 0.5)
 
 problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
     .with_possible_As_and_Bs(As, Bs)\
