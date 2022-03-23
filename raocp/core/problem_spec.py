@@ -1,4 +1,3 @@
-import numpy as np
 import raocp.core.scenario_tree as core_tree
 
 
