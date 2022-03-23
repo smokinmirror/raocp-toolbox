@@ -1,6 +1,7 @@
 import raocp.core.scenario_tree as core_tree
 import raocp.core.costs as core_costs
 import raocp.core.risks as core_risks
+import raocp.core.cones as core_cones
 
 
 def _check_lengths(nonleaf_nodes_num, total_nodes_num, A, B, cost_item, risk_item):
@@ -160,13 +161,15 @@ class MarkovChainRAOCPProblemBuilder:
         else:
             raise ValueError('cost type %s not supported' % cost_type)
 
-    def with_all_risk(self, risk_type, alpha):
+    def with_all_risk(self, risk_type, alpha, cone_type, cone_dim):
         self.__risk_item = []
         if risk_type == "AVaR":
-            for i in range(self.__tree.num_nonleaf_nodes()):
-                self.__risk_item.append(core_risks.AVaR(alpha,
-                                                        self.__tree.conditional_probabilities_of_children(i),
-                                                        i))
+            if cone_type == "PosOvth":
+                for i in range(self.__tree.num_nonleaf_nodes()):
+                    self.__risk_item.append(core_risks.AVaR(alpha,
+                                                            self.__tree.conditional_probabilities_of_children(i),
+                                                            i,
+                                                            core_cones.PosOvth(cone_dim)))
             return self
         else:
             raise ValueError('risk type %s not supported' % risk_type)

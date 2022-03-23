@@ -1,4 +1,5 @@
 import numpy as np
+import raocp.core.cones as core_cones
 
 
 class AVaR:
@@ -6,7 +7,7 @@ class AVaR:
     Risk item: Average Value at Risk class
     """
 
-    def __init__(self, alpha, pi, node):
+    def __init__(self, alpha, pi, node, cone: core_cones.PosOvth):
         """
         :param alpha: AVaR risk parameter
         :param pi: probabilities of children events at node
@@ -22,7 +23,7 @@ class AVaR:
 
         self.__E = None
         self.__F = None
-        self.__cone = None
+        self.__cone = cone
         self.__b = None
         self.__make_e_cone_b()
 
@@ -30,7 +31,7 @@ class AVaR:
         eye = np.eye(self.__num_children)
         self.__e = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
         self.__b = np.vstack((self.__pi, np.zeros((self.__num_children, 1)), 1))
-        self.__cone = 0  # cone class wip
+        # self.__cone = cone
 
     # GETTERS
     @property
@@ -59,7 +60,9 @@ class AVaR:
         return self.__b
 
     def __str__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
+        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}, " \
+               f"cone_type: {self.__cone.type}, cone_dim: {self.__cone.dimensions}"
 
     def __repr__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
+        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}, " \
+               f"cone_type: {self.__cone.type}, cone_dim: {self.__cone.dimensions}"
