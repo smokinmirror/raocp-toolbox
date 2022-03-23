@@ -153,25 +153,23 @@ class MarkovChainRAOCPProblemBuilder:
 
     def with_all_cost(self, cost_type, Q, R, Pf):
         self.__cost_item = []
-        match cost_type:
-            case "quadratic":
-                for i in range(self.__tree.num_nodes()):
-                    self.__cost_item.append(core_costs.Quadratic(Q, R, Pf, i))
-                return self
-            case _:
-                raise ValueError('cost type %s not supported' % cost_type)
+        if cost_type == "quadratic":
+            for i in range(self.__tree.num_nodes()):
+                self.__cost_item.append(core_costs.Quadratic(Q, R, Pf, i))
+            return self
+        else:
+            raise ValueError('cost type %s not supported' % cost_type)
 
     def with_all_risk(self, risk_type, alpha):
         self.__risk_item = []
-        match risk_type:
-            case "AVaR":
-                for i in range(self.__tree.num_nonleaf_nodes()):
-                    self.__risk_item.append(core_risks.AVaR(alpha,
-                                                            self.__tree.conditional_probabilities_of_children(i),
-                                                            i))
-                return self
-            case _:
-                raise ValueError('risk type %s not supported' % risk_type)
+        if risk_type == "AVaR":
+            for i in range(self.__tree.num_nonleaf_nodes()):
+                self.__risk_item.append(core_risks.AVaR(alpha,
+                                                        self.__tree.conditional_probabilities_of_children(i),
+                                                        i))
+            return self
+        else:
+            raise ValueError('risk type %s not supported' % risk_type)
 
     def create(self):
         """
