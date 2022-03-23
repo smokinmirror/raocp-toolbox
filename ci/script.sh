@@ -12,7 +12,7 @@ regular_test() {
     pip install virtualenv
 
     # --- create virtualenv
-    virtualenv -p python3.8 venv
+    virtualenv -p python3.10 venv
 
     # --- activate venv
     source venv/bin/activate
@@ -26,6 +26,7 @@ regular_test() {
     # --- run the tests
     # export PYTHONPATH=.
     python -W ignore tests/test_scenario_tree.py -v
+    python -W ignore tests/test_raocp.py -v
 }
 
 

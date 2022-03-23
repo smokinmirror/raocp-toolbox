@@ -48,7 +48,7 @@ F = np.eye(2)  # p x r matrix
 cone = "Rn+"
 b = np.ones((2, 1))  # p vector
 
-problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
+problem = r.core.MarkovChainRaocpProblemBuilder(scenario_tree=tree)\
     .with_root_state(root_state)\
     .with_possible_As_and_Bs(As, Bs)\
     .with_all_cost_type(cost_type).with_all_Q(Q).with_all_R(R).with_all_Pf(Pf)\

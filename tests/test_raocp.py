@@ -3,7 +3,7 @@ import raocp.core as rc
 import numpy as np
 
 
-class TestRAOCP(unittest.TestCase):
+class TestRaocp(unittest.TestCase):
     __tree_from_markov = None
     __tree_from_iid = None
     __raocp_from_markov = None
@@ -11,19 +11,19 @@ class TestRAOCP(unittest.TestCase):
 
     @staticmethod
     def __construct_tree_from_markov():
-        if TestRAOCP.__tree_from_markov is None:
+        if TestRaocp.__tree_from_markov is None:
             p = np.array([[0.1, 0.8, 0.1],
                           [0.4, 0.6, 0],
                           [0, 0.3, 0.7]])
             v = np.array([0.5, 0.5, 0])
             (N, tau) = (4, 3)
-            TestRAOCP.__tree_from_markov = \
+            TestRaocp.__tree_from_markov = \
                 rc.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @staticmethod
     def __construct_raocp_from_markov():
-        if TestRAOCP.__raocp_from_markov is None:
-            tree = TestRAOCP.__tree_from_markov
+        if TestRaocp.__raocp_from_markov is None:
+            tree = TestRaocp.__tree_from_markov
 
             root_state = np.array([[1],
                            [1]])  # n vector
@@ -48,7 +48,7 @@ class TestRAOCP(unittest.TestCase):
             F = np.eye(2)  # p x r matrix
             cone = "Rn+"
             b = np.ones((2, 1))  # p vector
-            TestRAOCP.__raocp_from_markov = rc.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
+            TestRaocp.__raocp_from_markov = rc.MarkovChainRaocpProblemBuilder(scenario_tree=tree)\
                 .with_root_state(root_state)\
                 .with_possible_As_and_Bs(As, Bs)\
                 .with_all_cost_type(cost_type).with_all_Q(Q).with_all_R(R).with_all_Pf(Pf)\
@@ -59,12 +59,12 @@ class TestRAOCP(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        TestRAOCP.__construct_tree_from_markov()
-        TestRAOCP.__construct_raocp_from_markov()
+        TestRaocp.__construct_tree_from_markov()
+        TestRaocp.__construct_raocp_from_markov()
 
     def test_A_B_at_node(self):
-        tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov
+        tree = TestRaocp.__tree_from_markov
+        raocp = TestRaocp.__raocp_from_markov
         Aw1 = np.eye(2)
         Aw2 = 2 * np.eye(2)
         Aw3 = 3 * np.eye(2)
@@ -86,3 +86,7 @@ class TestRAOCP(unittest.TestCase):
                 for column in range(test_A_at_node.shape[1]):
                     self.assertEqual(test_A_at_node[row, column], A_at_node[row, column])
                     self.assertEqual(test_B_at_node[row, column], B_at_node[row, column])
+
+
+if __name__ == '__main__':
+    unittest.main()

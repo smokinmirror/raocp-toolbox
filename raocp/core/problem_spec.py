@@ -17,7 +17,7 @@ def _check_lengths(nonleaf_nodes_num, total_nodes_num, A, B, cost_type, Q, R, Pf
                              % (name, name, length, nonleaf_nodes_num()))
 
 
-class RAOCP:
+class Raocp:
     """
     Risk-averse optimal control problem creation and storage
     """
@@ -118,7 +118,7 @@ class RAOCP:
         return f"RAOCP with {self.__last_leaf_node} nodes"
 
 
-class MarkovChainRAOCPProblemBuilder:
+class MarkovChainRaocpProblemBuilder:
     """
     Configuration class for easy building of RAOCP
     """
@@ -219,7 +219,7 @@ class MarkovChainRAOCPProblemBuilder:
                        self.__A, self.__B,
                        self.__cost_type, self.__Q, self.__R, self.__Pf,
                        self.__risk_type, self.__alpha, self.__E, self.__F, self.__cone, self.__b)
-        problem = RAOCP(self.__tree.num_nonleaf_nodes(), self.__tree.num_nodes(),
+        problem = Raocp(self.__tree.num_nonleaf_nodes(), self.__tree.num_nodes(),
                         self.__root_state, self.__A, self.__B,
                         self.__cost_type, self.__Q, self.__R, self.__Pf,
                         self.__risk_type, self.__alpha, self.__E, self.__F, self.__cone, self.__b)
@@ -275,7 +275,7 @@ class RAOCPFactory:
                        self.__A, self.__B,
                        self.__cost_type, self.__Q, self.__R, self.__Pf,
                        self.__risk_type, self.__alpha, self.__E, self.__F, self.__cone, self.__b)
-        problem = RAOCP(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes,
+        problem = Raocp(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes,
                         self.__root_state, self.__A, self.__B,
                         self.__cost_type, self.__Q, self.__R, self.__Pf,
                         self.__risk_type, self.__alpha, self.__E, self.__F, self.__cone, self.__b)
