@@ -48,4 +48,6 @@ problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
     .create()
 
 print(problem)
-print(problem.A_at_node(4))
+x0 = np.array([[-1],
+               [2]])
+print(problem.cost_item_at_node(0).get_cost(x0))
