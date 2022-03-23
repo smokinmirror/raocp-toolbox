@@ -1,8 +1,8 @@
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: "[FEAT] -> your issue title here"
-labels: ''
+title: your issue title here
+labels: enhancement
 assignees: ''
 
 ---
