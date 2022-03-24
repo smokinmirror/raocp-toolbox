@@ -7,7 +7,7 @@ class AVaR:
     Risk item: Average Value at Risk class
     """
 
-    def __init__(self, alpha, pi, node, cone: core_cones.PosOvth):
+    def __init__(self, alpha, pi, node):
         """
         :param alpha: AVaR risk parameter
         :param pi: probabilities of children events at node
@@ -23,7 +23,7 @@ class AVaR:
 
         self.__E = None
         self.__F = None
-        self.__cone = cone
+        self.__cone = None
         self.__b = None
         self.__make_e_cone_b()
 
@@ -59,9 +59,7 @@ class AVaR:
         return self.__b
 
     def __str__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}, " \
-               f"cone_type: {self.__cone.type}, cone_dim: {self.__cone.dimensions}"
+        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
 
     def __repr__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}, " \
-               f"cone_type: {self.__cone.type}, cone_dim: {self.__cone.dimensions}"
+        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"

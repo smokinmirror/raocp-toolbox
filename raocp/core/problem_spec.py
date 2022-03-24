@@ -1,7 +1,6 @@
 import raocp.core.scenario_tree as core_tree
 import raocp.core.costs as core_costs
 import raocp.core.risks as core_risks
-import raocp.core.cones as core_cones
 
 
 def _check_lengths(nonleaf_nodes_num, total_nodes_num, A, B, cost_item, risk_item):
@@ -161,15 +160,13 @@ class MarkovChainRAOCPProblemBuilder:
         else:
             raise ValueError('cost type %s not supported' % cost_type)
 
-    def with_all_risk(self, risk_type, alpha, cone_type, cone_dim):
+    def with_all_risk(self, risk_type, alpha):
         self.__risk_item = []
         if risk_type == "AVaR":
-            if cone_type == "PosOvth":
-                for i in range(self.__tree.num_nonleaf_nodes()):
-                    self.__risk_item.append(core_risks.AVaR(alpha,
-                                                            self.__tree.conditional_probabilities_of_children(i),
-                                                            i,
-                                                            core_cones.PosOvth(cone_dim)))
+            for i in range(self.__tree.num_nonleaf_nodes()):
+                self.__risk_item.append(core_risks.AVaR(alpha,
+                                                        self.__tree.conditional_probabilities_of_children(i),
+                                                        i))
             return self
         else:
             raise ValueError('risk type %s not supported' % risk_type)
@@ -185,49 +182,3 @@ class MarkovChainRAOCPProblemBuilder:
                         self.__A, self.__B,
                         self.__cost_item, self.__risk_item)
         return problem
-
-
-# class RAOCPFactory:
-#     """
-#     Factory class to construct risk-averse optimal control problem
-#
-#     Only for when the user wishes to provide all the lists in their entirety
-#     """
-#     def __init__(self, scenario_tree: core_tree.ScenarioTree,
-#                  A, B,
-#                  cost_type, Q, R, Pf,
-#                  risk_type, alpha):
-#         """
-#         :param scenario_tree: instance of ScenarioTree class
-#         :param A: list of possible system dynamics matrices
-#         :param B: list of possible input dynamics matrices
-#         :param cost_type: list of the cost type (quadratic, ...) at each node
-#         :param Q: list of the Q matrix used for computing nonleaf node cost
-#         :param R: list of the R matrix used for computing nonleaf node cost
-#         :param Pf: list of the P_f matrix used for computing leaf node cost
-#         :param risk_type: list of the risk type (AVAR, EVAR, conic, ...) at each node
-#         :param alpha: list of risk parameter at each node
-#         """
-#         self.__tree = scenario_tree
-#         self.__A = A
-#         self.__B = B
-#         self.__cost_type = cost_type
-#         self.__Q = Q
-#         self.__R = R
-#         self.__Pf = Pf
-#         self.__risk_type = risk_type
-#         self.__alpha = alpha
-#
-#     def create(self):
-#         """
-#         Checks lengths of each list and then creates a risk-averse optimal control problem
-#         """
-#         _check_lengths(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes,
-#                        self.__A, self.__B,
-#                        self.__cost_type, self.__Q, self.__R, self.__Pf,
-#                        self.__risk_type, self.__alpha)
-#         problem = RAOCP(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes,
-#                         self.__A, self.__B,
-#                         self.__cost_type, self.__Q, self.__R, self.__Pf,
-#                         self.__risk_type, self.__alpha)
-#         return problem
