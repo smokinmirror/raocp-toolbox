@@ -23,7 +23,7 @@ class Uni:
     @property
     def type(self):
         """Universe type"""
-        return f"R^{self.__dimension}"
+        return "Uni"
 
     @property
     def dimension(self):
@@ -53,7 +53,7 @@ class Zero:
     @property
     def type(self):
         """Zero type"""
-        return f"(0)^{self.__dimension}"
+        return "Zero"
 
     @property
     def dimension(self):
@@ -69,21 +69,21 @@ class NonnegOrth:
     def __init__(self):
         self.__dimension = 0
 
-    def projection_onto_cone(self, x):
+    def project_onto_cone(self, x):
         self.__dimension = x.size
         proj_x = x
         for i in range(self.__dimension):
             proj_x[i] = max(0, x[i])
         return proj_x
 
-    def projection_onto_dual(self, x):  # this cone is self dual
-        return NonnegOrth.projection_onto_cone(self, x)
+    def project_onto_dual(self, x):  # this cone is self dual
+        return NonnegOrth.project_onto_cone(self, x)
 
     # GETTERS
     @property
     def type(self):
         """Nonnegative Orthant type"""
-        return f"R^{self.__dimension}_+"
+        return "NonnegOrth"
 
     @property
     def dimension(self):
@@ -99,7 +99,7 @@ class SOC:
     def __init__(self):
         self.__dimension = 0
 
-    def projection_onto_cone(self, x):
+    def project_onto_cone(self, x):
         self.__dimension = x.size
         proj_x = x
         r = x[-1]
@@ -115,14 +115,14 @@ class SOC:
             proj_x = np.concatenate((proj_s, proj_r)).reshape((self.__dimension, 1))
         return proj_x
 
-    def projection_onto_dual(self, x):  # this cone is self dual
-        return SOC.projection_onto_cone(self, x)
+    def project_onto_dual(self, x):  # this cone is self dual
+        return SOC.project_onto_cone(self, x)
 
     # GETTERS
     @property
     def type(self):
         """Second Order Cone type"""
-        return f"SOC^{self.__dimension}"
+        return "SOC"
 
     @property
     def dimension(self):
@@ -140,8 +140,31 @@ class Cart:
         :param cones: list of cones
         """
         self.__dimension = 0
+        self.__dimensions = []
         self.__cones = cones
         self.__num_cones = len(cones)
+
+    def project_onto_cone(self, x):
+        size = []
+        proj_x = []
+        for i in range(len(x)):
+            size.append(x[i].size)
+            proj_x.append(self.__cones[i].project_onto_cone(x[i]))
+
+        self.__dimension = sum(size)
+        self.__dimensions = size
+        return proj_x
+
+    def project_onto_dual(self, x):
+        size = []
+        proj_x = []
+        for i in range(len(x)):
+            size.append(x[i].size)
+            proj_x.append(self.__cones[i].project_onto_dual(x[i]))
+
+        self.__dimension = sum(size)
+        self.__dimensions = size
+        return proj_x
 
     # GETTERS
     @property
@@ -156,3 +179,8 @@ class Cart:
     def dimension(self):
         """Cone dimension"""
         return self.__dimension
+
+    @property
+    def dimensions(self):
+        """List of the dimensions of each cone"""
+        return self.__dimensions

@@ -57,9 +57,11 @@ x1 = np.array([[4],
 print(problem.cost_item_at_node(0).get_cost(x0))
 
 uni = core_cones.Uni()
+zero = core_cones.Zero()
 non = core_cones.NonnegOrth()
 soc = core_cones.SOC()
-cones = [uni, non]
-print(core_cones.Cart(cones).type)
-
-print(soc.projection_onto_dual(x1))
+cones = [uni, zero, non, soc]
+exes = [x0, x1, x0, x1]
+cart = core_cones.Cart(cones)
+print(cart.type)
+print(cart.project_onto_cone(exes))
