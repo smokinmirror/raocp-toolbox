@@ -62,4 +62,4 @@ soc = core_cones.SOC()
 cones = [uni, non]
 print(core_cones.Cart(cones).type)
 
-print(soc.projection_onto_cone(x1))
+print(soc.projection_onto_dual(x1))

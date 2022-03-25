@@ -9,11 +9,51 @@ class Uni:
     def __init__(self):
         self.__dimension = 0
 
+    def project_onto_cone(self, x):
+        self.__dimension = x.size
+        return x
+
+    def project_onto_dual(self, x):  # the dual of universe is zero
+        self.__dimension = x.size
+        shape = x.shape
+        proj_x = np.zeros(self.__dimension).reshape(shape)
+        return proj_x
+
     # GETTERS
     @property
     def type(self):
         """Universe type"""
         return f"R^{self.__dimension}"
+
+    @property
+    def dimension(self):
+        """Cone dimension"""
+        return self.__dimension
+
+
+class Zero:
+    """
+    The zero cone ({0})
+    """
+
+    def __init__(self):
+        self.__dimension = 0
+
+    def project_onto_cone(self, x):
+        self.__dimension = x.size
+        shape = x.shape
+        proj_x = np.zeros(self.__dimension).reshape(shape)
+        return proj_x
+
+    def project_onto_dual(self, x):  # the dual of zero is universe
+        self.__dimension = x.size
+        return x
+
+    # GETTERS
+    @property
+    def type(self):
+        """Zero type"""
+        return f"(0)^{self.__dimension}"
 
     @property
     def dimension(self):
@@ -37,11 +77,7 @@ class NonnegOrth:
         return proj_x
 
     def projection_onto_dual(self, x):  # this cone is self dual
-        self.__dimension = x.size
-        proj_x = x
-        for i in range(self.__dimension):
-            proj_x[i] = max(0, x[i])
-        return proj_x
+        return NonnegOrth.projection_onto_cone(self, x)
 
     # GETTERS
     @property
@@ -80,46 +116,13 @@ class SOC:
         return proj_x
 
     def projection_onto_dual(self, x):  # this cone is self dual
-        self.__dimension = x.size
-        proj_x = x
-        r = x[-1]
-        s = np.delete(x, -1)  # returns row vector
-        s_2norm = np.linalg.norm(s)
-        if s_2norm <= r:
-            pass  # proj_x = x
-        elif s_2norm <= -r:
-            proj_x = np.zeros(self.__dimension).reshape((self.__dimension, 1))
-        else:
-            proj_r = (s_2norm + r) / 2
-            proj_s = proj_r * (s/s_2norm)
-            proj_x = np.concatenate((proj_s, proj_r)).reshape((self.__dimension, 1))
-        return proj_x
+        return SOC.projection_onto_cone(self, x)
 
     # GETTERS
     @property
     def type(self):
         """Second Order Cone type"""
         return f"SOC^{self.__dimension}"
-
-    @property
-    def dimension(self):
-        """Cone dimension"""
-        return self.__dimension
-
-
-class Zero:
-    """
-    The zero cone ({0})
-    """
-
-    def __init__(self):
-        self.__dimension = 0
-
-    # GETTERS
-    @property
-    def type(self):
-        """Zero type"""
-        return f"(0)^{self.__dimension}"
 
     @property
     def dimension(self):
