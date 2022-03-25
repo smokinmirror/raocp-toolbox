@@ -54,6 +54,8 @@ x0 = np.array([[-1],
 print(problem.cost_item_at_node(0).get_cost(x0))
 
 uni = core_cones.Uni()
-soc = core_cones.PosOrth()
-cones = [uni, soc]
+non = core_cones.NonnegOrth()
+cones = [uni, non]
 print(core_cones.Cart(cones).type)
+
+print(non.projection_onto_cone(x0))

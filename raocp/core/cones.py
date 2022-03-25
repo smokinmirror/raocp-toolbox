@@ -21,18 +21,32 @@ class Uni:
         return self.__dimension
 
 
-class PosOrth:
+class NonnegOrth:
     """
-    The positive orthant cone (R^n_+)
+    The nonnegative orthant cone (R^n_+)
     """
 
     def __init__(self):
         self.__dimension = 0
 
+    def projection_onto_cone(self, x):
+        self.__dimension = x.size
+        proj_x = x
+        for i in range(self.__dimension):
+            proj_x[i] = max(0, x[i])
+        return proj_x
+
+    def projection_onto_dual(self, x):  # this cone is self dual
+        self.__dimension = x.size
+        proj_x = x
+        for i in range(self.__dimension):
+            proj_x[i] = max(0, x[i])
+        return proj_x
+
     # GETTERS
     @property
     def type(self):
-        """Positive Orthant type"""
+        """Nonnegative Orthant type"""
         return f"R^{self.__dimension}_+"
 
     @property
