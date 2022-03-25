@@ -1,7 +1,5 @@
 import raocp as r
 import numpy as np
-import raocp.core.cones as core_cones
-import raocp.core.costs as core_costs
 
 # ScenarioTree generation ----------------------------------------------------------------------------------------------
 
@@ -48,20 +46,3 @@ problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
     .create()
 
 print(problem)
-
-x0 = np.array([[-1],
-               [2]])
-x1 = np.array([[4],
-               [4],
-               [5]])
-print(problem.cost_item_at_node(0).get_cost(x0))
-
-uni = core_cones.Uni()
-zero = core_cones.Zero()
-non = core_cones.NonnegOrth()
-soc = core_cones.SOC()
-cones = [uni, zero, non, soc]
-exes = [x0, x1, x0, x1]
-cart = core_cones.Cart(cones)
-print(cart.type)
-print(cart.project_onto_cone(exes))
