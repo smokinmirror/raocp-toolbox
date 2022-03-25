@@ -57,11 +57,43 @@ class NonnegOrth:
 
 class SOC:
     """
-    The second order cone ()
+    The second order cone (N^n_2)
     """
 
     def __init__(self):
         self.__dimension = 0
+
+    def projection_onto_cone(self, x):
+        self.__dimension = x.size
+        proj_x = x
+        r = x[-1]
+        s = np.delete(x, -1)  # returns row vector
+        s_2norm = np.linalg.norm(s)
+        if s_2norm <= r:
+            pass  # proj_x = x
+        elif s_2norm <= -r:
+            proj_x = np.zeros(self.__dimension).reshape((self.__dimension, 1))
+        else:
+            proj_r = (s_2norm + r) / 2
+            proj_s = proj_r * (s/s_2norm)
+            proj_x = np.concatenate((proj_s, proj_r)).reshape((self.__dimension, 1))
+        return proj_x
+
+    def projection_onto_dual(self, x):  # this cone is self dual
+        self.__dimension = x.size
+        proj_x = x
+        r = x[-1]
+        s = np.delete(x, -1)  # returns row vector
+        s_2norm = np.linalg.norm(s)
+        if s_2norm <= r:
+            pass  # proj_x = x
+        elif s_2norm <= -r:
+            proj_x = np.zeros(self.__dimension).reshape((self.__dimension, 1))
+        else:
+            proj_r = (s_2norm + r) / 2
+            proj_s = proj_r * (s/s_2norm)
+            proj_x = np.concatenate((proj_s, proj_r)).reshape((self.__dimension, 1))
+        return proj_x
 
     # GETTERS
     @property

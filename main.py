@@ -51,11 +51,15 @@ print(problem)
 
 x0 = np.array([[-1],
                [2]])
+x1 = np.array([[4],
+               [4],
+               [5]])
 print(problem.cost_item_at_node(0).get_cost(x0))
 
 uni = core_cones.Uni()
 non = core_cones.NonnegOrth()
+soc = core_cones.SOC()
 cones = [uni, non]
 print(core_cones.Cart(cones).type)
 
-print(non.projection_onto_cone(x0))
+print(soc.projection_onto_cone(x1))
