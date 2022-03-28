@@ -14,7 +14,7 @@ A = np.vstack((A, np.random.randint(-5, 5, size=[r, n - r]) @ A))
 N = sp.linalg.null_space(A)
 
 # This means that all vectors of the form x = N*z are in the kernel of A
-# Coversely, for any vector x in the kernel of A, there is a z such that
+# Conversely, for any vector x in the kernel of A, there is a z such that
 # x = N*z. For example:
 z0 = np.random.randn(r, 1)
 x0 = N @ z0

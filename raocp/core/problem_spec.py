@@ -25,7 +25,8 @@ class RAOCP:
 
     def __init__(self, last_nonleaf_node, last_leaf_node,
                  system_dynamics, input_dynamics,
-                 cost_item, risk_item):
+                 cost_item, risk_item,
+                 scenario_tree: core_tree.ScenarioTree):
         """
         :param last_nonleaf_node: last node at stage N-1
         :param last_leaf_node: last node at stage N
@@ -52,6 +53,8 @@ class RAOCP:
         # Risk
         self.__risk_item = risk_item
         self.__risk_value = []
+        # Tree
+        self.__tree = scenario_tree
 
     # GETTERS
     @property
@@ -63,6 +66,11 @@ class RAOCP:
     def num_nodes(self):
         """Total number of nodes"""
         return self.__num_leaf_node
+
+    @property
+    def tree(self):
+        """Scenario tree"""
+        return self.__tree
 
     def A_at_node(self, idx):
         """
@@ -180,5 +188,6 @@ class MarkovChainRAOCPProblemBuilder:
                        self.__cost_item, self.__risk_item)
         problem = RAOCP(self.__tree.num_nonleaf_nodes(), self.__tree.num_nodes(),
                         self.__A, self.__B,
-                        self.__cost_item, self.__risk_item)
+                        self.__cost_item, self.__risk_item,
+                        self.__tree)
         return problem

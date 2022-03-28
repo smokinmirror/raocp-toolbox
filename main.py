@@ -46,3 +46,6 @@ problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
     .create()
 
 print(problem)
+nodes = 3
+
+print()
