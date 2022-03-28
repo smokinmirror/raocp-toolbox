@@ -1,6 +1,7 @@
 import unittest
 import raocp.core as rc
 import numpy as np
+import raocp.core.cones as core_cones
 
 
 class TestRAOCP(unittest.TestCase):
@@ -42,10 +43,10 @@ class TestRAOCP(unittest.TestCase):
 
             (risk_type, alpha) = ("AVaR", 0.5)
 
-            TestRAOCP.__raocp_from_markov = rc.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
-                .with_possible_As_and_Bs(As, Bs)\
-                .with_all_cost(cost_type, Q, R, Pf)\
-                .with_all_risk(risk_type, alpha)\
+            TestRAOCP.__raocp_from_markov = rc.MarkovChainRAOCPProblemBuilder(scenario_tree=tree) \
+                .with_possible_As_and_Bs(As, Bs) \
+                .with_all_cost(cost_type, Q, R, Pf) \
+                .with_all_risk(risk_type, alpha) \
                 .create()
 
     @classmethod
@@ -78,6 +79,52 @@ class TestRAOCP(unittest.TestCase):
                 for column in range(test_A_at_node.shape[1]):
                     self.assertEqual(test_A_at_node[row, column], A_at_node[row, column])
                     self.assertEqual(test_B_at_node[row, column], B_at_node[row, column])
+
+    def test_cones(self):
+        tol = 1e-10
+        # create cones
+        uni = core_cones.Uni()
+        zero = core_cones.Zero()
+        non = core_cones.NonnegOrth()
+        soc = core_cones.SOC()
+        cones = [uni, zero, non, soc]
+        cart = core_cones.Cart(cones)
+
+        # create test examples
+        x = np.array([[-10], [-5], [0], [5], [10]])
+        x_list = [x, x, x, x]
+        cones_type = ["Uni", "Zero", "NonnegOrth", "SOC"]
+        cart_type = "Uni x Zero x NonnegOrth x SOC"
+        cones_project_onto_cone = [x, np.zeros(x.shape), np.array([[0], [0], [0], [5], [10]]),
+                                   np.array([[-9.082482904638630], [-4.541241452319315],
+                                             [0], [4.541241452319315], [11.123724356957945]])]
+        cones_project_onto_dual = [np.zeros(x.shape), x, np.array([[0], [0], [0], [5], [10]]),
+                                   np.array([[-9.082482904638630], [-4.541241452319315],
+                                             [0], [4.541241452319315], [11.123724356957945]])]
+        cones_dimension = [5, 5, 5, 5]
+
+        # test cones
+        for i_cones in range(len(cones_type)):
+            self.assertEqual(cones_type[i_cones], cones[i_cones].type)
+            for row in range(cones_project_onto_cone[i_cones].shape[0]):
+                for column in range(cones_project_onto_cone[i_cones].shape[1]):
+                    self.assertAlmostEqual(cones_project_onto_cone[i_cones][row, column],
+                                           cones[i_cones].project_onto_cone(x_list[i_cones])[row, column], delta=tol)
+                    self.assertAlmostEqual(cones_project_onto_dual[i_cones][row, column],
+                                           cones[i_cones].project_onto_dual(x_list[i_cones])[row, column], delta=tol)
+
+        # test Cart
+        for i_cones in range(len(cones_type)):
+            self.assertEqual(cart_type, cart.type)
+            for row in range(cones_project_onto_cone[i_cones].shape[0]):
+                for column in range(cones_project_onto_cone[i_cones].shape[1]):
+                    self.assertAlmostEqual(cones_project_onto_cone[i_cones][row, column],
+                                           cart.project_onto_cone(x_list)[i_cones][row, column], delta=tol)
+                    self.assertAlmostEqual(cones_project_onto_dual[i_cones][row, column],
+                                           cart.project_onto_dual(x_list)[i_cones][row, column], delta=tol)
+            self.assertEqual(20, cart.dimension)
+        for i_cones in range(len(cones_type)):
+            self.assertEqual(cones_dimension[i_cones], cart.dimensions[i_cones])
 
 
 if __name__ == '__main__':

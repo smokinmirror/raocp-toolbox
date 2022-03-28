@@ -71,7 +71,7 @@ class NonnegOrth:
 
     def project_onto_cone(self, x):
         self.__dimension = x.size
-        proj_x = x
+        proj_x = np.empty((self.__dimension, 1))
         for i in range(self.__dimension):
             proj_x[i] = max(0, x[i])
         return proj_x
