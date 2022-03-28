@@ -11,15 +11,15 @@ class Cache:
     def __init__(self, problem_spec: ps.RAOCP, initial_state):
         self.__raocp = problem_spec
         self.__initial_state = initial_state
-        self.__x = 0
-        self.__u = 1
-        self.__y = 2
-        self.__s = 3
-        self.__t = 4
-        self.__z_prim = np.array([[None] * 5] * self.__raocp.tree.num_nodes(), dtype=object)
-        self.__z_prim_update = np.array([[None] * 5] * self.__raocp.tree.num_nodes(), dtype=object)
-        self.__z_dual = np.array([[None] * 5] * self.__raocp.tree.num_nodes(), dtype=object)
-        self.__z_dual_update = np.array([[None] * 5] * self.__raocp.tree.num_nodes(), dtype=object)
+        (self.__x, self.__u, self.__y, self.__s, self.__t) = (0, 1, 2, 3, 4)
+        self.__num_prim_parts = 5
+        (self.__w1, self.__w2, self.__w3, self.__w4, self.__w5, self.__w6, self.__w7, self.__w8, self.__w9) \
+            = (0, 1, 2, 3, 4, 5, 6, 7, 8)
+        self.__num_dual_parts = 9
+        self.__z_prim = np.array([[None] * self.__num_prim_parts] * self.__raocp.tree.num_nodes(), dtype=object)
+        self.__z_prim_update = np.array([[None] * self.__num_prim_parts] * self.__raocp.tree.num_nodes(), dtype=object)
+        self.__z_dual = np.array([[None] * self.__num_dual_parts] * self.__raocp.tree.num_nodes(), dtype=object)
+        self.__z_dual_update = np.array([[None] * self.__num_dual_parts] * self.__raocp.tree.num_nodes(), dtype=object)
 
     # prox_f
 
@@ -33,7 +33,7 @@ class Cache:
     def project_on_S2(self):
         """
         z2 = [[y0 ... x(N-1)], [s1 ... sN], [t1 ... tN]]
-        :returns: projection of y, s, t onto linear space S_2
+        :returns: nothing
         """
         for i in range(self.__raocp.num_nonleaf_nodes):
             children = self.__raocp.tree.children_of(i)
@@ -60,8 +60,7 @@ class Cache:
     # L / L*
 
     def L(self, z):
-        for i in range(self.__raocp.num_nonleaf_nodes):
-            w1 = i  # what
+        pass
 
     def L_adjoint(self):
         pass
