@@ -34,8 +34,6 @@ class RAOCP:
         :param cost_item: list of cost class at each node
         :param risk_item: list of risk class at each nonleaf node
 
-        Note: ambiguity sets of coherent risk measures can be expressed by conic inequalities,
-                defined by a tuple (E, F, cone, b)
         Note: avoid using this constructor directly; use the builder instead
         """
         # Nodes
@@ -44,14 +42,10 @@ class RAOCP:
         # System
         self.__A = system_dynamics
         self.__B = input_dynamics
-        self.__state = []
-        self.__input = []
         # Cost
         self.__cost_item = cost_item
-        self.__cost_value = []
         # Risk
         self.__risk_item = risk_item
-        self.__risk_value = []
 
     # GETTERS
     @property
@@ -91,35 +85,6 @@ class RAOCP:
         :return: risk class at node idx
         """
         return self.__risk_item[idx]
-
-    # SETTERS
-    def update_state(self, state):
-        """
-        :param state: list of calculated state (x) at each node
-        :return: nothing
-        """
-        self.__state = state
-
-    def update_input(self, ip):
-        """
-        :param ip: list of calculated input (u) at each node
-        :return: nothing
-        """
-        self.__input = ip
-
-    def update_cost_value(self, cost_value):
-        """
-        :param cost_value: list of calculated cost at each node
-        :return: nothing
-        """
-        self.__cost_value = cost_value
-
-    def update_risk_value(self, risk_value):
-        """
-        :param risk_value: list of calculated risk at each node
-        :return: nothing
-        """
-        self.__risk_value = risk_value
 
     def __str__(self):
         return f"RAOCP\n+ Nodes: {self.__num_leaf_node}\n" \
