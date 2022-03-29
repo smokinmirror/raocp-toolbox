@@ -60,7 +60,7 @@ class AVaR:
         return self.__b
 
     def __str__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
+        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}; cone: {self.__cone.type}"
 
     def __repr__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
+        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}; cone: {self.__cone.type}"
