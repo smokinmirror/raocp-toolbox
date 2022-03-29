@@ -185,7 +185,7 @@ class TestRAOCP(unittest.TestCase):
                 for column in range(E[i_node].shape[1]):
                     self.assertAlmostEqual(E[i_node][row, column],
                                            raocp.risk_item_at_node(i_node).E[row, column], delta=tol)
-            for row in range(1, b[i_node].shape[0]):
+            for row in range(b[i_node].shape[0]):
                 self.assertAlmostEqual(b[i_node][row, 0], raocp.risk_item_at_node(i_node).b[row, 0], delta=tol)
 
 
