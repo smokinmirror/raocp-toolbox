@@ -24,9 +24,11 @@ class Quadratic:
         If an input (u) is given, then it is a nonleaf node cost = x' Q x + u' R u.
         """
         if u is None:
-            return x.T @ self.__Pf @ x
+            cost = x.T @ self.__Pf @ x
+            return cost[0, 0]
         else:
-            return x.T @ self.__Q @ x + u.T @ self.__R @ u
+            cost = x.T @ self.__Q @ x + u.T @ self.__R @ u
+            return cost[0, 0]
 
     # GETTERS
     @property
