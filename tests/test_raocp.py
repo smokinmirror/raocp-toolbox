@@ -125,6 +125,68 @@ class TestRAOCP(unittest.TestCase):
             self.assertEqual(20, cart.dimension)
         for i_cones in range(len(cones_type)):
             self.assertEqual(cones_dimension[i_cones], cart.dimensions[i_cones])
+            
+    def test_risk(self):
+        tol = 1e-10
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+
+        # create test examples
+        E = [np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
+             np.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5], [-1., -0., -0.], [-0., -1., -0.], [-0., -0., -1.],
+                       [1., 1., 1.]]),
+             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
+             np.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5], [-1., -0., -0.], [-0., -1., -0.], [-0., -0., -1.],
+                       [1., 1., 1.]]),
+             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
+             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
+             np.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5], [-1., -0., -0.], [-0., -1., -0.], [-0., -0., -1.],
+                       [1., 1., 1.]]),
+             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]]),
+             np.array([[0.5], [-1.], [1.]])]
+        b = [np.array([[0.5], [0.5], [0.], [0.], [1.]]),
+             np.array([[0.1], [0.8], [0.1], [0.], [0.], [0.], [1.]]),
+             np.array([[0.4], [0.6], [0.], [0.], [1.]]),
+             np.array([[0.1], [0.8], [0.1], [0.], [0.], [0.], [1.]]),
+             np.array([[0.4], [0.6], [0.], [0.], [1.]]),
+             np.array([[0.3], [0.7], [0.], [0.], [1.]]),
+             np.array([[0.1], [0.8], [0.1], [0.], [0.], [0.], [1.]]),
+             np.array([[0.4], [0.6], [0.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]]),
+             np.array([[1.], [0.], [1.]])]
+
+        # test risk
+        for i_node in range(tree.num_nonleaf_nodes()):
+            self.assertEqual("AVaR", raocp.risk_item_at_node(i_node).type)
+            self.assertEqual(0.5, raocp.risk_item_at_node(i_node).alpha)
+            self.assertEqual("NonnegOrth x NonnegOrth x Zero", raocp.risk_item_at_node(i_node).cone.type)
+            for row in range(E[i_node].shape[0]):
+                for column in range(E[i_node].shape[1]):
+                    self.assertAlmostEqual(E[i_node][row, column],
+                                           raocp.risk_item_at_node(i_node).E[row, column], delta=tol)
+            for row in range(1, b[i_node].shape[0]):
+                self.assertAlmostEqual(b[i_node][row, 0], raocp.risk_item_at_node(i_node).b[row, 0], delta=tol)
 
 
 if __name__ == '__main__':
