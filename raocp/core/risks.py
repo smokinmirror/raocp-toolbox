@@ -29,7 +29,7 @@ class AVaR:
 
     def __make_e_cone_b(self):
         eye = np.eye(self.__num_children)
-        self.__e = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
+        self.__E = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
         self.__b = np.vstack((self.__pi, np.zeros((self.__num_children, 1)), 1))
         self.__cone = core_cones.NonnegOrth()
 
@@ -45,7 +45,7 @@ class AVaR:
         return self.__alpha
 
     @property
-    def e(self):
+    def E(self):
         """Ambiguity set matrix E"""
         return self.__E
 
