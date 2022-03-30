@@ -30,9 +30,9 @@ class AVaR:
     def __make_e_f_cone_b(self):
         eye = np.eye(self.__num_children)
         self.__e = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
-        self.__f = np.zeros((2*self.__num_children+1, self.__num_children))
+        self.__f = np.empty((2*self.__num_children+1, 0))
         self.__b = np.vstack((self.__pi, np.zeros((self.__num_children, 1)), 1))
-        self.__cone = core_cones.NonnegOrth()
+        self.__cone = core_cones.Cart([core_cones.NonnegOrth(), core_cones.NonnegOrth(), core_cones.Zero()])
 
     # GETTERS
     @property
@@ -58,7 +58,7 @@ class AVaR:
     @property
     def cone(self):
         """Ambiguity set cone"""
-        return self.__cone
+        return self.__cone.type
 
     @property
     def b(self):
