@@ -104,14 +104,14 @@ class TestRAOCP(unittest.TestCase):
 
         # create set samples
         for i in range(num_samples):
-            samples[0][i] = (np.random.randint(-100, 100, x[0].size))  # uni samples
-            samples[1][i] = (np.zeros(x[1].size))  # zero samples
-            samples[2][i] = (np.random.randint(0, 100, x[2].size))  # non samples
-            s = np.random.randint(-100, 100, x[3].size-1)
+            samples[0][i] = (np.random.randint(-100, 100, cone_dim))  # uni samples
+            samples[1][i] = (np.zeros(cone_dim))  # zero samples
+            samples[2][i] = (np.random.randint(0, 100, cone_dim))  # non samples
+            s = np.random.randint(-100, 100, cone_dim-1)
             t = np.linalg.norm(s)
             samples[3][i] = (np.hstack((s, t)))  # soc samples
-            samples[4][i] = (np.random.randint(-100, 100, x[1].size))  # uni dual samples (non)
-            samples[5][i] = (np.zeros(x[0].size))  # zero dual samples (uni)
+            samples[4][i] = (np.random.randint(-100, 100, cone_dim))  # uni dual samples (non)
+            samples[5][i] = (np.zeros(cone_dim))  # zero dual samples (uni)
 
         samples[6] = samples[2]
         samples[7] = samples[3]
@@ -121,17 +121,17 @@ class TestRAOCP(unittest.TestCase):
             self.assertEqual(cones_type[i], cones[i].type)
             projection[i] = cones[i].project_onto_cone(x[i])
             dual_projection[i] = cones[i].project_onto_dual(x[i])
-            for j in range(len(samples[2])):
-                self.assertTrue(np.inner(projection[i].reshape((20,)), samples[i][j]) <= 0)
-                self.assertTrue(np.inner(dual_projection[i].reshape((20,)), samples[i+4][j]) <= 0)
+            for j in range(len(samples[0])):
+                self.assertTrue(np.inner(projection[i].reshape((cone_dim,)), samples[i][j]) <= 0)
+                self.assertTrue(np.inner(dual_projection[i].reshape((cone_dim,)), samples[i+num_cones][j]) <= 0)
 
-        # # test cartesian
-        # for i_cones in range(len(cones_type)):
-        #     self.assertEqual(cart_type, cart.type)
-        #
-        #     self.assertEqual(20, cart.dimension)
-        # for i_cones in range(len(cones_type)):
-        #     self.assertEqual(cones_dimension[i_cones], cart.dimensions[i_cones])
+        # test cartesian
+        self.assertEqual(cart_type, cart.type)
+        projection = cart.project_onto_cone([x[0], x[1], x[2], x[3]])
+        dual_projection = cart.project_onto_cone([x[0], x[1], x[2], x[3]])
+        for j in range(len(samples[0])):
+            self.assertTrue(np.inner(projection[i].reshape((cone_dim,)), samples[i][j]) <= 0)
+            self.assertTrue(np.inner(dual_projection[i].reshape((cone_dim,)), samples[i + num_cones][j]) <= 0)
 
     def test_cost(self):
         tree = TestRAOCP.__tree_from_markov
