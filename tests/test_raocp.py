@@ -96,9 +96,11 @@ class TestRAOCP(unittest.TestCase):
         multiplier = 10
         x = [None] * num_cones
         cone_dim = 20
-        samples = [[None] * num_samples] * num_cones * 2
         projection = [None] * num_cones
         dual_projection = [None] * num_cones
+        samples = []
+        for i in range(num_cones * 2):
+            samples.append([None] * num_samples)
         for i in range(num_cones):
             x[i] = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
 
