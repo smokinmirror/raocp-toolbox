@@ -29,8 +29,8 @@ class AVaR:
 
     def __make_e_f_cone_b(self):
         eye = np.eye(self.__num_children)
-        self.__e = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
-        self.__f = np.empty((2*self.__num_children+1, 0))
+        self.__E = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
+        self.__F = np.empty((2*self.__num_children+1, 0))
         self.__b = np.vstack((self.__pi, np.zeros((self.__num_children, 1)), 1))
         self.__cone = core_cones.Cart([core_cones.NonnegOrth(), core_cones.NonnegOrth(), core_cones.Zero()])
 
@@ -64,11 +64,6 @@ class AVaR:
     def b(self):
         """Ambiguity set vector b"""
         return self.__b
-
-    @property
-    def num_children(self):
-        """Number of children at node"""
-        return self.__num_children
 
     def __str__(self):
         return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
