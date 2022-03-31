@@ -80,7 +80,7 @@ class TestRAOCP(unittest.TestCase):
                     self.assertEqual(test_A_at_node[row, col], A_at_node[row, col])
                     self.assertEqual(test_B_at_node[row, col], B_at_node[row, col])
 
-            np.testing.asset_array_equal(test_A_at_node, A_at_node)
+            np.testing.assert_array_equal(test_A_at_node, A_at_node)
 
     def test_cones(self):
         tol = 1e-10
