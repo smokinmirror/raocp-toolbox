@@ -26,9 +26,9 @@ class TestRAOCP(unittest.TestCase):
         if TestRAOCP.__raocp_from_markov is None:
             tree = TestRAOCP.__tree_from_markov
 
-            Aw1 = np.eye(3)
-            Aw2 = 2 * np.eye(3)
-            Aw3 = 3 * np.eye(3)
+            Aw1 = np.eye(2)
+            Aw2 = 2 * np.eye(2)
+            Aw3 = 3 * np.eye(2)
             As = [Aw1, Aw2, Aw3]  # n x n matrices
 
             Bw1 = np.eye(2)
@@ -37,9 +37,9 @@ class TestRAOCP(unittest.TestCase):
             Bs = [Bw1, Bw2, Bw3]  # n x u matrices
 
             cost_type = "quadratic"
-            Q = 5 * np.eye(3)  # n x n matrix
+            Q = 5 * np.eye(2)  # n x n matrix
             R = np.eye(2)  # u x u matrix OR scalar
-            Pf = 10 * np.eye(3)  # n x n matrix
+            Pf = 10 * np.eye(2)  # n x n matrix
 
             (risk_type, alpha) = ("AVaR", 0.5)
 
@@ -58,9 +58,9 @@ class TestRAOCP(unittest.TestCase):
     def test_A_B_at_node(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
-        Aw1 = np.eye(3)
-        Aw2 = 2 * np.eye(3)
-        Aw3 = 3 * np.eye(3)
+        Aw1 = np.eye(2)
+        Aw2 = 2 * np.eye(2)
+        Aw3 = 3 * np.eye(2)
         test_As = [Aw1, Aw2, Aw3]  # n x n matrices
 
         Bw1 = np.eye(2)
@@ -99,7 +99,7 @@ class TestRAOCP(unittest.TestCase):
         projection = [] * num_cones
         dual_projection = [] * num_cones
         for i in range(num_cones):
-            cone_dim[i] = np.random.randint(2, 20)
+            cone_dim[i] = np.random.randint(2, 20, 1)
             x[i] = multiplier * np.random.rand(cone_dim[i])
 
         # create set samples
