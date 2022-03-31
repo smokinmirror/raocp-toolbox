@@ -37,9 +37,9 @@ class TestRAOCP(unittest.TestCase):
             Bs = [Bw1, Bw2, Bw3]  # n x u matrices
 
             cost_type = "quadratic"
-            Q = 5 * np.eye(2)  # n x n matrix
+            Q = 10 * np.eye(2)  # n x n matrix
             R = np.eye(2)  # u x u matrix OR scalar
-            Pf = 10 * np.eye(2)  # n x n matrix
+            Pf = 5 * np.eye(2)  # n x n matrix
 
             (risk_type, alpha) = ("AVaR", 0.5)
 
@@ -92,37 +92,38 @@ class TestRAOCP(unittest.TestCase):
 
         # create points for projection
         num_cones = len(cones)
+        num_samples = 100
         multiplier = 10
-        x = [] * num_cones
-        cone_dim = [] * num_cones
-        samples = [] * num_cones
-        projection = [] * num_cones
-        dual_projection = [] * num_cones
+        x = [None] * num_cones
+        cone_dim = 20
+        samples = [[None] * num_samples] * num_cones * 2
+        projection = [None] * num_cones
+        dual_projection = [None] * num_cones
         for i in range(num_cones):
-            cone_dim[i] = np.random.randint(2, 20, 1)
-            x[i] = multiplier * np.random.rand(cone_dim[i])
+            x[i] = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
 
         # create set samples
-        for i in range(100):
-            samples[0].append(np.random.randint(-100, 100, x[0].size))  # uni samples
-            samples[1].append(np.zeros(x[1].size))  # zero samples
-            samples[2].append(np.random.randint(0, 100, x[2].size))  # non samples
+        for i in range(num_samples):
+            samples[0][i] = (np.random.randint(-100, 100, x[0].size))  # uni samples
+            samples[1][i] = (np.zeros(x[1].size))  # zero samples
+            samples[2][i] = (np.random.randint(0, 100, x[2].size))  # non samples
             s = np.random.randint(-100, 100, x[3].size-1)
             t = np.linalg.norm(s)
-            samples[3].append(np.concatenate((s, t)))  # soc samples
-            samples[4].append(np.random.randint(-100, 100, x[1].size))  # uni dual samples (non)
-            samples[5].append(np.zeros(x[0].size))  # zero dual samples (uni)
-            samples[6] = samples[2]
-            samples[7] = samples[3]
+            samples[3][i] = (np.hstack((s, t)))  # soc samples
+            samples[4][i] = (np.random.randint(-100, 100, x[1].size))  # uni dual samples (non)
+            samples[5][i] = (np.zeros(x[0].size))  # zero dual samples (uni)
+
+        samples[6] = samples[2]
+        samples[7] = samples[3]
 
         # test cones
         for i in range(num_cones):
             self.assertEqual(cones_type[i], cones[i].type)
             projection[i] = cones[i].project_onto_cone(x[i])
             dual_projection[i] = cones[i].project_onto_dual(x[i])
-            for j in range(samples[i].size):
-                self.assertTrue(np.inner(projection[i], samples[i]))
-                self.assertTrue(np.inner(projection[i], samples[i+4]))
+            for j in range(len(samples[2])):
+                self.assertTrue(np.inner(projection[i].reshape((20,)), samples[i][j]) <= 0)
+                self.assertTrue(np.inner(dual_projection[i].reshape((20,)), samples[i+4][j]) <= 0)
 
         # # test cartesian
         # for i_cones in range(len(cones_type)):
