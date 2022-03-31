@@ -77,8 +77,8 @@ class TestRAOCP(unittest.TestCase):
             B_at_node = raocp.B_at_node(i_node)
             # for row in range(test_A_at_node.shape[0]):
             # for column in range(test_A_at_node.shape[1]):
-            self.assertEqual(test_A_at_node, A_at_node)
-            self.assertEqual(test_B_at_node, B_at_node)
+            self.assertEqual(test_A_at_node.to_list(), A_at_node.to_list())
+            self.assertEqual(test_B_at_node.to_list(), B_at_node.to_list())
 
     def test_cones(self):
         tol = 1e-10
