@@ -1,5 +1,5 @@
 import unittest
-import raocp.core as rc
+import raocp.core as core
 import numpy as np
 
 
@@ -16,7 +16,7 @@ class TestScenarioTree(unittest.TestCase):
             v = np.array([0.5, 0.5, 0])
             (N, tau) = (4, 3)
             TestScenarioTree.__tree_from_markov = \
-                rc.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
+                core.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -143,7 +143,7 @@ class TestScenarioTree(unittest.TestCase):
         v = np.random.rand(n, )
         v /= sum(v)
         (N, tau) = (20, 5)
-        tree = rc.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
+        tree = core.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
         for stage in range(tree.num_stages()):  # 0, 1, ..., N-1
             for node_idx in tree.nodes_at_stage(stage):
                 prob_child = tree.conditional_probabilities_of_children(node_idx)
@@ -192,7 +192,7 @@ class TestScenarioTree(unittest.TestCase):
         v /= sum(v)
         (N, tau) = (4, 5)
         with self.assertRaises(ValueError):
-            _ = rc.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
+            _ = core.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
 
 if __name__ == '__main__':

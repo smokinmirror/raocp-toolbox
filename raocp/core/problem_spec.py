@@ -3,19 +3,19 @@ import raocp.core.costs as core_costs
 import raocp.core.risks as core_risks
 
 
-def _check_lengths(nonleaf_nodes_num, total_nodes_num, A, B, cost_item, risk_item):
+def _check_lengths(num_nonleaf_nodes, num_nodes, A, B, cost_item, risk_item):
     all_nodes = ["A", "B", "cost_item"]
     nonleaf_nodes = ["risk_item"]
     for name in all_nodes:
         length = len(eval(name))
-        if length != total_nodes_num:
+        if length != num_nodes:
             raise ValueError('incorrect dimension in list `%s`, len(%s) = %d, number of nodes = %d'
-                             % (name, name, length, total_nodes_num))
+                             % (name, name, length, num_nodes))
     for name in nonleaf_nodes:
         length = len(eval(name))
-        if length != nonleaf_nodes_num:
+        if length != num_nonleaf_nodes:
             raise ValueError('incorrect dimension in list `%s`, len(%s) = %d, number of nonleaf nodes = %d'
-                             % (name, name, length, nonleaf_nodes_num))
+                             % (name, name, length, num_nonleaf_nodes))
 
 
 class RAOCP:

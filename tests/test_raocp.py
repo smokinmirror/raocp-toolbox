@@ -81,7 +81,7 @@ class TestRAOCP(unittest.TestCase):
     def test_cones(self):
         tol = 1e-10
         # create cones
-        uni = core_cones.Uni()
+        uni = core_cones.Real()
         zero = core_cones.Zero()
         non = core_cones.NonnegOrth()
         soc = core_cones.SOC()
