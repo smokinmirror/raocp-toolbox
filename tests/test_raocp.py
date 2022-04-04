@@ -78,7 +78,7 @@ class TestRAOCP(unittest.TestCase):
             np.testing.assert_array_equal(test_A_at_node, A_at_node)
             np.testing.assert_array_equal(test_B_at_node, B_at_node)
 
-    def test_cones_Uni(self):
+    def test_cones_uni(self):
         # create cone
         uni = core_cones.Uni()
         cones_type = "Uni"
@@ -120,7 +120,7 @@ class TestRAOCP(unittest.TestCase):
             samples[i] = np.zeros(cone_dim)  # zero samples
             dual_samples[i] = np.random.randint(-100, 100, 20)  # zero dual samples (uni)
 
-        # test uni
+        # test zero
         self.assertEqual(cones_type, zero.type)
         projection = zero.project_onto_cone(x)
         dual_projection = zero.project_onto_dual(x)
@@ -146,7 +146,7 @@ class TestRAOCP(unittest.TestCase):
             samples[i] = np.random.randint(0, 100, cone_dim)  # non samples
             dual_samples[i] = samples[i]
 
-        # test uni
+        # test non
         self.assertEqual(cones_type, non.type)
         projection = non.project_onto_cone(x)
         dual_projection = non.project_onto_dual(x)
@@ -174,7 +174,7 @@ class TestRAOCP(unittest.TestCase):
             samples[i] = (np.hstack((s, t)))  # soc samples
             dual_samples[i] = samples[i]
 
-        # test uni
+        # test soc
         self.assertEqual(cones_type, soc.type)
         projection = soc.project_onto_cone(x)
         dual_projection = soc.project_onto_dual(x)
