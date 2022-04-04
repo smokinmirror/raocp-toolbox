@@ -1,7 +1,6 @@
 import unittest
 import raocp.core as rc
 import numpy as np
-import raocp.core.cones as core_cones
 
 
 class TestRAOCP(unittest.TestCase):
@@ -55,97 +54,37 @@ class TestRAOCP(unittest.TestCase):
         TestRAOCP.__construct_tree_from_markov()
         TestRAOCP.__construct_raocp_from_markov()
 
-    def test_A_B_at_node(self):
+    def test_A_at_node(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
         Aw1 = np.eye(2)
         Aw2 = 2 * np.eye(2)
         Aw3 = 3 * np.eye(2)
         test_As = [Aw1, Aw2, Aw3]  # n x n matrices
-
-        Bw1 = np.eye(2)
-        Bw2 = 2 * np.eye(2)
-        Bw3 = 3 * np.eye(2)
-        test_Bs = [Bw1, Bw2, Bw3]  # n x u matrices
-
         num_nodes = tree.num_nodes()
         for i_node in range(1, num_nodes):
             w_value_at_node = tree.value_at_node(i_node)
             test_A_at_node = test_As[w_value_at_node]
             A_at_node = raocp.A_at_node(i_node)
-            test_B_at_node = test_Bs[w_value_at_node]
-            B_at_node = raocp.B_at_node(i_node)
             np.testing.assert_array_equal(test_A_at_node, A_at_node)
-            np.testing.assert_array_equal(test_B_at_node, B_at_node)
 
-    def test_cones(self):
-        tol = 1e-10
-        # create cones
-        uni = core_cones.Real()
-        zero = core_cones.Zero()
-        non = core_cones.NonnegOrth()
-        soc = core_cones.SOC()
-        cones = [uni, zero, non, soc]
-        cones_type = ["Uni", "Zero", "NonnegOrth", "SOC"]
-        cart = core_cones.Cart(cones)
-        cart_type = "Uni x Zero x NonnegOrth x SOC"
-
-        # create points for projection
-        num_cones = len(cones)
-        num_samples = 100
-        multiplier = 10
-        x = [None] * num_cones
-        cone_dim = 20
-        projection = [None] * num_cones
-        dual_projection = [None] * num_cones
-        samples = []
-        for i in range(num_cones * 2):
-            samples.append([None] * num_samples)
-        for i in range(num_cones):
-            x[i] = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
-
-        # create set samples
-        for i in range(num_samples):
-            samples[0][i] = (np.random.randint(-100, 100, 20))  # uni samples
-            samples[1][i] = (np.zeros(cone_dim))  # zero samples
-            samples[2][i] = (np.random.randint(0, 100, cone_dim))  # non samples
-            s = np.random.randint(-100, 100, cone_dim - 1)
-            t = np.linalg.norm(s)
-            samples[3][i] = (np.hstack((s, t)))  # soc samples
-            samples[4][i] = (np.zeros(cone_dim))  # uni dual samples (zero)
-            samples[5][i] = (np.random.randint(-100, 100, cone_dim))  # zero dual samples (uni)
-        samples[6] = samples[2]
-        samples[7] = samples[3]
-
-        # test cones
-        for i in range(num_cones):
-            self.assertEqual(cones_type[i], cones[i].type)
-            projection[i] = cones[i].project_onto_cone(x[i])
-            dual_projection[i] = cones[i].project_onto_dual(x[i])
-            for j in range(len(samples[0])):
-                self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - projection[i].reshape((cone_dim,))),
-                                         (samples[i][j].reshape((cone_dim,)) - projection[i].reshape(
-                                             (cone_dim,)))) <= 0)
-                self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - dual_projection[i].reshape((cone_dim,))),
-                                         (samples[i+num_cones][j].reshape((cone_dim,)) - dual_projection[i].reshape(
-                                             (cone_dim,)))) <= 0)
-
-        # test cartesian
-        self.assertEqual(cart_type, cart.type)
-        projection = cart.project_onto_cone([x[0], x[1], x[2], x[3]])
-        dual_projection = cart.project_onto_cone([x[0], x[1], x[2], x[3]])
-        for j in range(len(samples[0])):
-            self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - projection[i].reshape((cone_dim,))),
-                                     (samples[i][j].reshape((cone_dim,)) - projection[i].reshape((cone_dim,)))) <= 0)
-            self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - dual_projection[i].reshape((cone_dim,))),
-                                     (samples[i+num_cones][j].reshape((cone_dim,)) - dual_projection[i].reshape(
-                                         (cone_dim,)))) <= 0)
-
-    def test_cost(self):
+    def test_B_at_node(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
+        Bw1 = np.eye(2)
+        Bw2 = 2 * np.eye(2)
+        Bw3 = 3 * np.eye(2)
+        test_Bs = [Bw1, Bw2, Bw3]  # n x u matrices
+        num_nodes = tree.num_nodes()
+        for i_node in range(1, num_nodes):
+            w_value_at_node = tree.value_at_node(i_node)
+            test_B_at_node = test_Bs[w_value_at_node]
+            B_at_node = raocp.B_at_node(i_node)
+            np.testing.assert_array_equal(test_B_at_node, B_at_node)
 
-        # create test examples
+    def test_cost_value(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
         x0 = np.array([[1],
                        [1]])
 
@@ -158,88 +97,124 @@ class TestRAOCP(unittest.TestCase):
             return x_list
 
         cost_type = "quadratic"
-        Q = 10 * np.eye(2)  # n x n matrix
-        R = np.eye(2)  # u x u matrix OR scalar
-        Pf = 5 * np.eye(2)  # n x n matrix
         cost = [10.0, 10.0, 40.0, 10.0, 40.0, 90.0, 40.0, 160.0, 10.0, 40.0, 90.0, 40.0, 160.0, 360.0, 810.0, 40.0,
                 160.0, 360.0, 160.0, 640.0, 10.0, 160.0, 810.0, 40.0, 640.0, 1440.0, 7290.0, 40.0, 640.0, 3240.0, 160.0,
                 2560.0]
-
-        # test cost
         for i_node in range(tree.num_nodes()):
             self.assertEqual(cost_type, raocp.cost_item_at_node(i_node).type)
             self.assertEqual(cost[i_node], raocp.cost_item_at_node(i_node).get_cost(x_all(x0)[i_node]))
+
+    def test_cost_Q(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        Q = 10 * np.eye(2)  # n x n matrix
+        for i_node in range(tree.num_nodes()):
             for row in range(Q.shape[0]):
                 for column in range(Q.shape[1]):
                     self.assertEqual(Q[row, column], raocp.cost_item_at_node(i_node).Q[row, column])
+
+    def test_cost_R(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        R = np.eye(2)  # u x u matrix OR scalar
+        for i_node in range(tree.num_nodes()):
             for row in range(R.shape[0]):
                 for column in range(R.shape[1]):
                     self.assertEqual(R[row, column], raocp.cost_item_at_node(i_node).R[row, column])
+
+    def test_cost_Pf(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        Pf = 5 * np.eye(2)  # n x n matrix
+        for i_node in range(tree.num_nodes()):
             for row in range(Pf.shape[0]):
                 for column in range(Pf.shape[1]):
                     self.assertEqual(Pf[row, column], raocp.cost_item_at_node(i_node).Pf[row, column])
 
-    def test_risk(self):
-        tol = 1e-10
+    def test_risk_values(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
-
-        # create test examples
-        E = [np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
-             np.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5], [-1., -0., -0.], [-0., -1., -0.], [-0., -0., -1.],
-                       [1., 1., 1.]]),
-             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
-             np.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5], [-1., -0., -0.], [-0., -1., -0.], [-0., -0., -1.],
-                       [1., 1., 1.]]),
-             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
-             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
-             np.array([[0.5, 0., 0.], [0., 0.5, 0.], [0., 0., 0.5], [-1., -0., -0.], [-0., -1., -0.], [-0., -0., -1.],
-                       [1., 1., 1.]]),
-             np.array([[0.5, 0.], [0., 0.5], [-1., -0.], [-0., -1.], [1., 1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]]),
-             np.array([[0.5], [-1.], [1.]])]
-        b = [np.array([[0.5], [0.5], [0.], [0.], [1.]]),
-             np.array([[0.1], [0.8], [0.1], [0.], [0.], [0.], [1.]]),
-             np.array([[0.4], [0.6], [0.], [0.], [1.]]),
-             np.array([[0.1], [0.8], [0.1], [0.], [0.], [0.], [1.]]),
-             np.array([[0.4], [0.6], [0.], [0.], [1.]]),
-             np.array([[0.3], [0.7], [0.], [0.], [1.]]),
-             np.array([[0.1], [0.8], [0.1], [0.], [0.], [0.], [1.]]),
-             np.array([[0.4], [0.6], [0.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]]),
-             np.array([[1.], [0.], [1.]])]
-
-        # test risk
         for i_node in range(tree.num_nonleaf_nodes()):
             self.assertEqual("AVaR", raocp.risk_item_at_node(i_node).type)
             self.assertEqual(0.5, raocp.risk_item_at_node(i_node).alpha)
-            self.assertEqual("NonnegOrth x NonnegOrth x Zero", raocp.risk_item_at_node(i_node).cone.type)
-            for row in range(E[i_node].shape[0]):
-                for column in range(E[i_node].shape[1]):
-                    self.assertAlmostEqual(E[i_node][row, column],
+
+    def test_risk_E(self):
+        tol = 1e-10
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        alpha = 0.5
+        for i_node in range(tree.num_nonleaf_nodes()):
+            num_children = len(tree.conditional_probabilities_of_children(i_node))
+            eye = np.eye(num_children)
+            E_at_node = np.vstack((alpha * eye, -eye, np.ones((1, num_children))))
+            for row in range(E_at_node.shape[0]):
+                for column in range(E_at_node.shape[1]):
+                    self.assertAlmostEqual(E_at_node[row, column],
                                            raocp.risk_item_at_node(i_node).E[row, column], delta=tol)
-            for row in range(b[i_node].shape[0]):
-                self.assertAlmostEqual(b[i_node][row, 0], raocp.risk_item_at_node(i_node).b[row, 0], delta=tol)
+
+    def test_risk_F(self):
+        tol = 1e-10
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        for i_node in range(tree.num_nonleaf_nodes()):
+            num_children = len(tree.conditional_probabilities_of_children(i_node))
+            F_at_node = np.zeros((2 * num_children + 1, num_children))
+            for row in range(F_at_node.shape[0]):
+                for column in range(F_at_node.shape[1]):
+                    self.assertAlmostEqual(F_at_node[row, column],
+                                           raocp.risk_item_at_node(i_node).F[row, column], delta=tol)
+
+    def test_risk_b(self):
+        tol = 1e-10
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        for i_node in range(tree.num_nonleaf_nodes()):
+            num_children = len(tree.conditional_probabilities_of_children(i_node))
+            pi = np.asarray(tree.conditional_probabilities_of_children(i_node)).reshape(num_children, 1)
+            b_at_node = np.vstack((pi, np.zeros((num_children, 1)), 1))
+            for row in range(b_at_node.shape[0]):
+                self.assertAlmostEqual(b_at_node[row, 0], raocp.risk_item_at_node(i_node).b[row, 0], delta=tol)
+
+    def test_risk_cone(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        cone_type = "NonnegOrth x NonnegOrth x Zero"
+
+        # create points for projection
+        num_cones = 3
+        num_samples = 100
+        multiplier = 10
+        x = [None] * num_cones
+        cone_dim = 20
+        samples = []
+        for i in range(num_cones * 2):
+            samples.append([None] * num_samples)
+        for i in range(num_cones):
+            x[i] = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
+
+        # create set samples
+        for i in range(num_samples):
+            samples[0][i] = np.random.randint(0, 100, cone_dim)  # non samples
+            samples[1][i] = np.random.randint(0, 100, cone_dim)  # non samples
+            samples[2][i] = np.zeros(cone_dim)  # zero samples
+            samples[5][i] = np.zeros(cone_dim)  # zero dual samples (uni)
+        samples[3] = samples[0]
+        samples[4] = samples[1]
+
+        # test cartesian
+        for i_node in range(tree.num_nonleaf_nodes()):
+            self.assertEqual(cone_type, raocp.risk_item_at_node(i_node).cone.type)
+            projection = raocp.risk_item_at_node(i_node).cone.project_onto_cone([x[0], x[1], x[2]])
+            dual_projection = raocp.risk_item_at_node(i_node).cone.project_onto_cone([x[0], x[1], x[2]])
+            for i in range(num_cones):
+                for j in range(len(samples[0])):
+                    self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - projection[i].reshape((cone_dim,))),
+                                             (samples[i][j].reshape((cone_dim,)) - projection[i].reshape(
+                                                 (cone_dim,)))) <= 0)
+                    self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - dual_projection[i].reshape((cone_dim,))),
+                                             (samples[i + num_cones][j].reshape((cone_dim,)) - dual_projection[
+                                                 i].reshape(
+                                                 (cone_dim,)))) <= 0)
 
 
 if __name__ == '__main__':
