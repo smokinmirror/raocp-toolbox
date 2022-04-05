@@ -1,5 +1,6 @@
 import unittest
-import raocp.core as core
+import raocp.core.scenario_tree as core_tree
+import raocp.core.problem_spec as core_spec
 import numpy as np
 
 
@@ -19,7 +20,7 @@ class TestRAOCP(unittest.TestCase):
             v = np.array([0.5, 0.5, 0])
             (N, tau) = (4, 3)
             TestRAOCP.__tree_from_markov = \
-                core.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
+                core_tree.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @staticmethod
     def __construct_raocp_from_markov():
@@ -42,7 +43,7 @@ class TestRAOCP(unittest.TestCase):
             (risk_type, alpha) = ("AVaR", 0.5)
 
             # create problem
-            TestRAOCP.__raocp_from_markov = core.RAOCP(scenario_tree=tree) \
+            TestRAOCP.__raocp_from_markov = core_spec.RAOCP(scenario_tree=tree) \
                 .with_markovian_dynamics(set_system, set_control) \
                 .with_all_costs(cost_type, nonleaf_state_weight, control_weight, leaf_state_weight) \
                 .with_all_risks(risk_type, alpha)
@@ -90,7 +91,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
+            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
 
     def test_markovian_control_dynamics_failure(self):
         tree = TestRAOCP.__tree_from_markov
@@ -103,7 +104,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
+            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
 
     def test_markovian_system_and_control_dynamics_failure(self):
         tree = TestRAOCP.__tree_from_markov
@@ -117,7 +118,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
+            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
 
     def test_cost_items_nonleaf_state_failure(self):
         tree = TestRAOCP.__tree_from_markov
@@ -132,7 +133,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
+            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
 
     def test_cost_items_control_failure(self):
         tree = TestRAOCP.__tree_from_markov
@@ -147,7 +148,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
+            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
 
     def test_cost_items_leaf_state_failure(self):
         tree = TestRAOCP.__tree_from_markov
@@ -162,7 +163,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
+            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
 
     def test_cost_items_states_failure(self):
         tree = TestRAOCP.__tree_from_markov
@@ -177,7 +178,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
+            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
 
 
 if __name__ == '__main__':

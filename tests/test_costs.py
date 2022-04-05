@@ -4,7 +4,6 @@ import numpy as np
 
 
 class TestCosts(unittest.TestCase):
-    # __real = core_cones.Real()
     # __num_samples = 100
 
     @classmethod
