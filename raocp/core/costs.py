@@ -22,10 +22,14 @@ class QuadraticNonleaf:
         """For calculating nonleaf cost"""
         if state.shape[0] != self.__nonleaf_state_weights.shape[0]:
             raise ValueError("quadratic cost input nonleaf state dimension does not match state weight matrix")
-        if control.shape[0] != self.__control_weights.shape[0]:
-            raise ValueError("quadratic cost input control dimension does not match control weight matrix")
-        self.__most_recent_cost_value = state.T @ self.__nonleaf_state_weights @ state \
-            + control.T @ self.__control_weights @ control
+        if isinstance(self.__control_weights, np.ndarray):
+            if control.shape[0] != self.__control_weights.shape[0]:
+                raise ValueError("quadratic cost input control dimension does not match control weight matrix")
+            self.__most_recent_cost_value = state.T @ self.__nonleaf_state_weights @ state \
+                + control.T @ self.__control_weights @ control
+        if isinstance(self.__control_weights, int):
+            self.__most_recent_cost_value = state.T @ self.__nonleaf_state_weights @ state \
+                + control.T @ control * self.__control_weights
         return self.__most_recent_cost_value[0, 0]
 
     # GETTERS

@@ -1,3 +1,5 @@
+import numpy as np
+
 import raocp.core.scenario_tree as core_tree
 import raocp.core.costs as core_costs
 import raocp.core.risks as core_risks
@@ -59,8 +61,9 @@ class RAOCP:
     def with_all_costs(self, cost_type, nonleaf_state_weights, control_weights, leaf_state_weights):
         if nonleaf_state_weights.shape[1] != leaf_state_weights.shape[1]:
             raise ValueError("nonleaf and leaf state cost weight matrices columns are different sizes")
-        if nonleaf_state_weights.shape[0] != control_weights.shape[0]:
-            raise ValueError("state cost weight matrix rows not equal to control cost weight matrix rows")
+        if isinstance(control_weights, np.ndarray):
+            if nonleaf_state_weights.shape[0] != control_weights.shape[0]:
+                raise ValueError("state cost weight matrix rows not equal to control cost weight matrix rows")
 
         if cost_type == "Quadratic":
             if nonleaf_state_weights.shape != leaf_state_weights.shape:
