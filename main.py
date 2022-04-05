@@ -33,16 +33,15 @@ Bw2 = 2*np.eye(2)
 Bw3 = 3*np.eye(2)
 Bs = [Bw1, Bw2, Bw3]  # n x u matrices
 
-cost_type = "quadratic"
+cost_type = "Quadratic"
 Q = 10*np.eye(2)  # n x n matrix
 R = np.eye(2)  # u x u matrix OR scalar
 Pf = 5*np.eye(2)  # n x n matrix
 
 (risk_type, alpha) = ("AVaR", 0.5)
-problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
-    .with_possible_As_and_Bs(As, Bs)\
-    .with_all_cost(cost_type, Q, R, Pf)\
-    .with_all_risk(risk_type, alpha)\
-    .create()
+problem = r.core.RAOCP(scenario_tree=tree)\
+    .with_markovian_dynamics(As, Bs)\
+    .with_all_costs(cost_type, Q, R, Pf)\
+    .with_all_risks(risk_type, alpha)
 
 print(problem)
