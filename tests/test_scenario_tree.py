@@ -25,7 +25,7 @@ class TestScenarioTree(unittest.TestCase):
 
     def test_markov_num_nodes(self):
         tree = TestScenarioTree.__tree_from_markov
-        self.assertEqual(32, tree.num_nodes())
+        self.assertEqual(32, tree.num_nodes)
 
     def test_markov_ancestor_of(self):
         tree = TestScenarioTree.__tree_from_markov
@@ -79,7 +79,7 @@ class TestScenarioTree(unittest.TestCase):
 
     def test_markov_num_stages(self):
         tree = TestScenarioTree.__tree_from_markov
-        self.assertEqual(4, tree.num_stages())
+        self.assertEqual(4, tree.num_stages)
 
     def test_markov_nodes_at_stage(self):
         tree = TestScenarioTree.__tree_from_markov
@@ -129,7 +129,7 @@ class TestScenarioTree(unittest.TestCase):
     def test_markov_conditional_probabilities_of_children(self):
         tol = 1e-5
         tree = TestScenarioTree.__tree_from_markov
-        for stage in range(tree.num_stages()):  # 0, 1, ..., N-1
+        for stage in range(tree.num_stages):  # 0, 1, ..., N-1
             for node_idx in tree.nodes_at_stage(stage):
                 prob_child = tree.conditional_probabilities_of_children(node_idx)
                 sum_prob = sum(prob_child)
@@ -144,7 +144,7 @@ class TestScenarioTree(unittest.TestCase):
         v /= sum(v)
         (N, tau) = (20, 5)
         tree = core.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
-        for stage in range(tree.num_stages()):  # 0, 1, ..., N-1
+        for stage in range(tree.num_stages):  # 0, 1, ..., N-1
             for node_idx in tree.nodes_at_stage(stage):
                 prob_child = tree.conditional_probabilities_of_children(node_idx)
                 sum_prob = sum(prob_child)
