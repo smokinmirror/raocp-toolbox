@@ -113,8 +113,8 @@ class SecondOrderCone:
     def project(self, vector):
         self.__dimension = _check_dimension(type(self), self.__dimension, vector)
         self.__shape = vector.shape
-        last_part = vector[-1]
-        first_part = np.delete(vector, -1)  # returns row vector
+        last_part = vector[-1].reshape(1, 1)
+        first_part = vector[0:-1]
         two_norm_of_first_part = np.linalg.norm(first_part)
         if two_norm_of_first_part <= last_part:
             projection = vector.copy()
