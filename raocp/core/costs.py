@@ -1,58 +1,74 @@
 import numpy as np
 
 
-class Quadratic:
+class QuadraticNonleaf:
     """
-    Cost item: quadratic cost for any node class
+    A quadratic cost item for any nonleaf node
     """
 
-    def __init__(self, Q, R, Pf, node):
+    def __init__(self, nonleaf_state_weights, control_weights):
         """
-        :param Q: nonleaf node state cost matrix
-        :param R: input cost matrix
-        :param Pf: leaf node state cost matrix
-        :param node: current node
+        :param nonleaf_state_weights: nonleaf node state cost matrix (Q)
+        :param control_weights: input cost matrix (R)
         """
-        self.__Q = Q
-        self.__R = R
-        self.__Pf = Pf
-        self.__node = node
+        self.__nonleaf_state_weights = nonleaf_state_weights
+        self.__control_weights = control_weights
+        self.__most_recent_cost_value = None
 
-    def get_cost(self, x, u=None):
-        """For calculating cost at any node
-        If an input (u) is not given, then it is a leaf node cost = x' Pf x.
-        If an input (u) is given, then it is a nonleaf node cost = x' Q x + u' R u.
-        """
-        if u is None:
-            cost = x.T @ self.__Pf @ x
-            return cost[0, 0]
-        else:
-            cost = x.T @ self.__Q @ x + u.T @ self.__R @ u
-            return cost[0, 0]
+    def get_cost(self, state, control):
+        """For calculating nonleaf cost"""
+        self.__most_recent_cost_value = state.T @ self.__nonleaf_state_weights @ state \
+            + control.T @ self.__control_weights @ control
+        return self.__most_recent_cost_value[0, 0]
 
     # GETTERS
     @property
-    def type(self):
-        """Cost type"""
-        return "quadratic"
+    def nonleaf_state_weights(self):
+        return self.__nonleaf_state_weights
 
     @property
-    def Q(self):
-        """Q"""
-        return self.__Q
+    def control_weights(self):
+        return self.__control_weights
 
     @property
-    def R(self):
-        """R"""
-        return self.__R
-
-    @property
-    def Pf(self):
-        """Pf"""
-        return self.__Pf
+    def most_recent_cost_value(self):
+        return self.__most_recent_cost_value[0, 0]
 
     def __str__(self):
-        return f"Cost item at node {self.__node}; type: quadratic"
+        return f"Cost item; type: {type(self).__name__}"
 
     def __repr__(self):
-        return f"Cost item at node {self.__node}; type: quadratic"
+        return f"Cost item; type: {type(self).__name__}"
+
+
+class QuadraticLeaf:
+    """
+    A quadratic cost item for any leaf node
+    """
+
+    def __init__(self, leaf_state_weights):
+        """
+        :param leaf_state_weights: leaf node state cost matrix (Pf)
+        """
+        self.__leaf_state_weights = leaf_state_weights
+        self.__most_recent_cost_value = None
+
+    def get_cost(self, state):
+        """For calculating leaf cost"""
+        self.__most_recent_cost_value = state.T @ self.__leaf_state_weights @ state
+        return self.__most_recent_cost_value[0, 0]
+
+    # GETTERS
+    @property
+    def leaf_state_weights(self):
+        return self.__leaf_state_weights
+
+    @property
+    def most_recent_cost_value(self):
+        return self.__most_recent_cost_value[0, 0]
+
+    def __str__(self):
+        return f"Cost item; type: {type(self).__name__}"
+
+    def __repr__(self):
+        return f"Cost item; type: {type(self).__name__}"

@@ -12,7 +12,7 @@ def _check_dimension(cone_type, cone_dimension, vector):
     if cone_dimension is None:
         cone_dimension = vector_dimension
     if cone_dimension != vector_dimension:
-        raise ValueError("%s cone dimension error: cone dimension = %d, input vector dimension = %d"
+        raise ValueError('%s cone dimension error: cone dimension = %d, input vector dimension = %d'
                          % (cone_type, cone_dimension, vector_dimension))
     else:
         return vector_dimension

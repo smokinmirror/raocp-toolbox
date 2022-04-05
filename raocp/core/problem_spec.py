@@ -23,118 +23,74 @@ class RAOCP:
     Risk-averse optimal control problem creation and storage
     """
 
-    def __init__(self, last_nonleaf_node, last_leaf_node,
-                 system_dynamics, input_dynamics,
-                 cost_item, risk_item):
+    def __init__(self, scenario_tree: core_tree.ScenarioTree):
         """
-        :param last_nonleaf_node: last node at stage N-1
-        :param last_leaf_node: last node at stage N
-        :param system_dynamics: list of the system dynamics (A) at each node
-        :param input_dynamics: list of the input dynamics (B) at each node
-        :param cost_item: list of cost class at each node
-        :param risk_item: list of risk class at each nonleaf node
-
-        Note: avoid using this constructor directly; use the builder instead
+        :param scenario_tree: instance of ScenarioTree
         """
-        # Nodes
-        self.__num_nonleaf_node = last_nonleaf_node
-        self.__num_leaf_node = last_leaf_node
-        # System
-        self.__A = system_dynamics
-        self.__B = input_dynamics
-        # Cost
-        self.__cost_item = cost_item
-        # Risk
-        self.__risk_item = risk_item
+        self.__tree = scenario_tree
+        self.__list_of_system_dynamics = [None] * self.__tree.num_nodes()  # matrix A
+        self.__list_of_input_dynamics = [None] * self.__tree.num_nodes()  # matrix B
+        self.__list_of_cost_items = [None] * self.__tree.num_nodes()
+        self.__list_of_risk_items = [None] * self.__tree.num_nonleaf_nodes()
 
     # GETTERS
     @property
-    def num_nonleaf_nodes(self):
-        """Total number of nonleaf nodes"""
-        return self.__num_nonleaf_node
+    def list_of_system_dynamics(self):
+        return self.__list_of_system_dynamics
 
     @property
-    def num_nodes(self):
-        """Total number of nodes"""
-        return self.__num_leaf_node
+    def list_of_input_dynamics(self):
+        return self.__list_of_input_dynamics
 
-    def A_at_node(self, idx):
-        """
-        :param idx: node index
-        :return: A matrix at node idx
-        """
-        return self.__A[idx]
+    @property
+    def list_of_cost_items(self):
+        return self.__list_of_cost_items
 
-    def B_at_node(self, idx):
-        """
-        :param idx: node index
-        :return: B matrix at node idx
-        """
-        return self.__B[idx]
-
-    def cost_item_at_node(self, idx):
-        """
-        :param idx: node index
-        :return: cost class at node idx
-        """
-        return self.__cost_item[idx]
-
-    def risk_item_at_node(self, idx):
-        """
-        :param idx: node index
-        :return: risk class at node idx
-        """
-        return self.__risk_item[idx]
-
-    def __str__(self):
-        return f"RAOCP\n+ Nodes: {self.__num_leaf_node}\n" \
-               f"+ {self.__cost_item[0]}\n" \
-               f"+ {self.__risk_item[0]}"
-
-    def __repr__(self):
-        return f"RAOCP with {self.__num_leaf_node} nodes, root cost: {self.__cost_item[0].type()}, " \
-               f"root risk: {self.__risk_item[0].type()}."
-
-
-class MarkovChainRAOCPProblemBuilder:
-    """
-    Configuration class for easy building of RAOCP
-    """
-    def __init__(self, scenario_tree: core_tree.ScenarioTree):
-        self.__tree = scenario_tree
-        self.__A = None
-        self.__B = None
-        self.__cost_item = None
-        self.__risk_item = None
+    @property
+    def list_of_risk_items(self):
+        return self.__list_of_risk_items
 
     # SETTERS
-    def with_possible_As_and_Bs(self, possible_As, possible_Bs):
-        self.__A = [None]
-        self.__B = [None]
-        for i in range(1, self.__tree.num_nodes()):
-            self.__A.append(possible_As[self.__tree.value_at_node(i)])
-            self.__B.append(possible_Bs[self.__tree.value_at_node(i)])
-        return self
+    def with_markovian_dynamics(self, system_dynamics, input_dynamics):
+        if self.__tree.tree_factory == "MarkovChain":
+            for i in range(1, self.__tree.num_nodes):
+                self.__list_of_system_dynamics[i] = system_dynamics[self.__tree.value_at_node(i)]
+                self.__list_of_input_dynamics[i] = input_dynamics[self.__tree.value_at_node(i)]
+            return self
+        else:
+            raise TypeError('dynamics are Markovian, but scenario tree is not')
 
-    def with_all_cost(self, cost_type, Q, R, Pf):
-        self.__cost_item = []
-        if cost_type == "quadratic":
-            for i in range(self.__tree.num_nodes()):
-                self.__cost_item.append(core_costs.Quadratic(Q, R, Pf, i))
+    def with_all_costs(self, cost_type, nonleaf_state_weights, input_weights, leaf_state_weights):
+        if cost_type == "Quadratic":
+            for i in range(self.__tree.num_nodes):
+                if i < self.__tree.num_nonleaf_nodes:
+                    self.__list_of_cost_items[i] = core_costs.QuadraticNonleaf(Q, R, i)
+                else:
+                    self.__list_of_cost_items[i] = core_costs.QuadraticLeaf(Pf, i)
             return self
         else:
             raise ValueError('cost type %s not supported' % cost_type)
 
-    def with_all_risk(self, risk_type, alpha):
+    def with_all_risks(self, risk_type, alpha):
         self.__risk_item = []
         if risk_type == "AVaR":
             for i in range(self.__tree.num_nonleaf_nodes()):
-                self.__risk_item.append(core_risks.AVaR(alpha,
-                                                        self.__tree.conditional_probabilities_of_children(i),
-                                                        i))
+                self.__risk_item.append(core_risks.AVaR(alpha, self.__tree.conditional_probabilities_of_children(i)))
             return self
         else:
             raise ValueError('risk type %s not supported' % risk_type)
+
+    def __str__(self):
+        return f"RAOCP\n+ Nodes: {self.__tree.num_nodes()}\n" \
+               f"+ {self.__list_of_cost_items[0]}\n" \
+               f"+ {self.__list_of_risk_items[0]}"
+
+    def __repr__(self):
+        return f"RAOCP with {self.__tree.num_nodes()} nodes, " \
+               f"with root cost: {self.__list_of_cost_items[0].type()}, " \
+               f"with root risk: {self.__list_of_risk_items[0].type()}."
+
+
 
     def create(self):
         """
