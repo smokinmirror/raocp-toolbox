@@ -4,57 +4,64 @@ import numpy as np
 
 
 class TestCosts(unittest.TestCase):
-    # __num_samples = 100
+    __QuadraticNonleaf = None
+    __QuadraticLeaf = None
+    __state = np.array([[-2], [2], [4]])
+    __control = np.array([[5], [-5], [2]])
+    __size = __state.size
+    __multipliers = [2, 3, 4]
+    __nonleaf_cost = 210
+    __leaf_cost = 96
+
+    @staticmethod
+    def __construct_classes():
+        nonleaf_state_weights = TestCosts.__multipliers[0] * np.eye(TestCosts.__size)
+        control_weights = TestCosts.__multipliers[1] * np.eye(TestCosts.__size)
+        leaf_state_weights = TestCosts.__multipliers[2] * np.eye(TestCosts.__size)
+        TestCosts.__QuadraticNonleaf = core_costs.QuadraticNonleaf(nonleaf_state_weights, control_weights)
+        TestCosts.__QuadraticLeaf = core_costs.QuadraticLeaf(leaf_state_weights)
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        TestCosts.__construct_classes()
 
-    def test_cost_value(self):
-        tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov
-        x0 = np.array([[1],
-                       [1]])
+    def test_quadratic_nonleaf_cost_value(self):
+        cost_item = TestCosts.__QuadraticNonleaf
+        nonleaf_cost = cost_item.get_cost_value(TestCosts.__state, TestCosts.__control)
+        self.assertEqual(np.shape(nonleaf_cost), ())
+        self.assertEqual(nonleaf_cost, TestCosts.__nonleaf_cost)
+        self.assertEqual(np.shape(cost_item.most_recent_cost_value), ())
+        self.assertEqual(cost_item.most_recent_cost_value, nonleaf_cost)
 
-        def x_all(initial_state):
-            x_list = [initial_state]
-            for i in range(1, tree.num_nodes()):
-                node = tree.ancestor_of(i)
-                x_at_node = raocp.A_at_node(i) @ x_list[node]
-                x_list.append(x_at_node)
-            return x_list
+    def test_quadratic_leaf_cost_value(self):
+        cost_item = TestCosts.__QuadraticLeaf
+        leaf_cost = cost_item.get_cost_value(TestCosts.__state)
+        self.assertEqual(np.shape(leaf_cost), ())
+        self.assertEqual(leaf_cost, TestCosts.__leaf_cost)
+        self.assertEqual(np.shape(cost_item.most_recent_cost_value), ())
+        self.assertEqual(cost_item.most_recent_cost_value, leaf_cost)
 
-        cost_type = "quadratic"
-        cost = [10.0, 10.0, 40.0, 10.0, 40.0, 90.0, 40.0, 160.0, 10.0, 40.0, 90.0, 40.0, 160.0, 360.0, 810.0, 40.0,
-                160.0, 360.0, 160.0, 640.0, 10.0, 160.0, 810.0, 40.0, 640.0, 1440.0, 7290.0, 40.0, 640.0, 3240.0, 160.0,
-                2560.0]
-        for i_node in range(tree.num_nodes()):
-            self.assertEqual(cost_type, raocp.cost_item_at_node(i_node).type)
-            self.assertEqual(cost[i_node], raocp.cost_item_at_node(i_node).get_cost(x_all(x0)[i_node]))
+    def test_quadratic_nonleaf_cost_state_failure(self):
+        # construct bad state
+        state = np.ones((TestCosts.__size + 1, 1))
 
-    def test_cost_Q(self):
-        tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov
-        Q = 10 * np.eye(2)  # n x n matrix
-        for i_node in range(tree.num_nodes()):
-            for row in range(Q.shape[0]):
-                for column in range(Q.shape[1]):
-                    self.assertEqual(Q[row, column], raocp.cost_item_at_node(i_node).Q[row, column])
+        # check error raised
+        with self.assertRaises(ValueError):
+            TestCosts.__QuadraticNonleaf.get_cost_value(state, TestCosts.__control)
 
-    def test_cost_R(self):
-        tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov
-        R = np.eye(2)  # u x u matrix OR scalar
-        for i_node in range(tree.num_nodes()):
-            for row in range(R.shape[0]):
-                for column in range(R.shape[1]):
-                    self.assertEqual(R[row, column], raocp.cost_item_at_node(i_node).R[row, column])
+    def test_quadratic_nonleaf_cost_control_failure(self):
+        # construct bad control
+        control = np.ones((TestCosts.__size + 1, 1))
 
-    def test_cost_Pf(self):
-        tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov
-        Pf = 5 * np.eye(2)  # n x n matrix
-        for i_node in range(tree.num_nodes()):
-            for row in range(Pf.shape[0]):
-                for column in range(Pf.shape[1]):
-                    self.assertEqual(Pf[row, column], raocp.cost_item_at_node(i_node).Pf[row, column])
+        # check error raised
+        with self.assertRaises(ValueError):
+            TestCosts.__QuadraticNonleaf.get_cost_value(TestCosts.__state, control)
+
+    def test_quadratic_leaf_cost_state_failure(self):
+        # construct bad state
+        state = np.ones((TestCosts.__size + 1, 1))
+
+        # check error raised
+        with self.assertRaises(ValueError):
+            TestCosts.__QuadraticLeaf.get_cost_value(state)

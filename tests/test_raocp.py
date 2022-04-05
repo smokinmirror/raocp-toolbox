@@ -84,7 +84,7 @@ class TestRAOCP(unittest.TestCase):
         tree = TestRAOCP.__tree_from_markov
 
         # construct bad markovian set of system dynamics
-        set_system = [np.eye(TestRAOCP.__good_size - 1), np.eye(TestRAOCP.__good_size)]  # n x n matrices
+        set_system = [np.eye(TestRAOCP.__good_size + 1), np.eye(TestRAOCP.__good_size)]  # n x n matrices
         # construct good markovian set of control dynamics
         control = np.ones((TestRAOCP.__good_size, 1))
         set_control = [control, 2 * control]  # n x u matrices
@@ -100,7 +100,7 @@ class TestRAOCP(unittest.TestCase):
         system = np.eye(TestRAOCP.__good_size)
         set_system = [system, 2 * system]  # n x n matrices
         # construct bad markovian set of control dynamics
-        set_control = [np.ones((TestRAOCP.__good_size - 1, 1)), np.ones((TestRAOCP.__good_size, 1))]  # n x u matrices
+        set_control = [np.ones((TestRAOCP.__good_size + 1, 1)), np.ones((TestRAOCP.__good_size, 1))]  # n x u matrices
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
@@ -112,8 +112,8 @@ class TestRAOCP(unittest.TestCase):
         # construct good markovian set of system dynamics (rows = 3)
         system = np.eye(TestRAOCP.__good_size)
         set_system = [system, 2 * system]  # n x n matrices
-        # construct good markovian set of control dynamics  (rows = 2)
-        control = np.ones((TestRAOCP.__good_size - 1, 1))
+        # construct good markovian set of control dynamics  (rows = 4)
+        control = np.ones((TestRAOCP.__good_size + 1, 1))
         set_control = [control, 2 * control]  # n x u matrices
 
         # construct problem with error catch
@@ -125,7 +125,7 @@ class TestRAOCP(unittest.TestCase):
         cost_type = "Quadratic"
 
         # construct bad nonleaf state weights
-        state_weights = np.eye(TestRAOCP.__good_size - 1)
+        state_weights = np.eye(TestRAOCP.__good_size + 1)
 
         # construct good control and terminal state weights
         control_weights = np.ones((TestRAOCP.__good_size, 1))
@@ -140,7 +140,7 @@ class TestRAOCP(unittest.TestCase):
         cost_type = "Quadratic"
 
         # construct bad control weights
-        control_weights = np.ones((TestRAOCP.__good_size - 1, 1))
+        control_weights = np.ones((TestRAOCP.__good_size + 1, 1))
 
         # construct good control and terminal state weights
         state_weights = np.eye(TestRAOCP.__good_size)
@@ -155,7 +155,7 @@ class TestRAOCP(unittest.TestCase):
         cost_type = "Quadratic"
 
         # construct bad leaf state weights
-        terminal_state_weights = np.eye(TestRAOCP.__good_size - 1)
+        terminal_state_weights = np.eye(TestRAOCP.__good_size + 1)
 
         # construct good control and state weights
         control_weights = np.ones((TestRAOCP.__good_size, 1))
@@ -171,7 +171,7 @@ class TestRAOCP(unittest.TestCase):
 
         # construct medium bad nonleaf and leaf state weights (same # of columns, different # of rows)
         state_weights = np.ones((TestRAOCP.__good_size, TestRAOCP.__good_size))
-        terminal_state_weights = np.ones((TestRAOCP.__good_size - 1, TestRAOCP.__good_size))
+        terminal_state_weights = np.ones((TestRAOCP.__good_size + 1, TestRAOCP.__good_size))
 
         # construct good control weights
         control_weights = np.ones((TestRAOCP.__good_size, 1))
