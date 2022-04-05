@@ -150,7 +150,13 @@ class Cartesian:
         """
         self.__cones = cones
         self.__num_cones = len(cones)
-        self.__dimension = None
+        self.__dimension = 0
+        for i in self.__cones:
+            if i.dimension is None:
+                self.__dimension = None
+                break
+            else:
+                self.__dimension += i.dimension
         self.__dimensions = [None] * self.__num_cones
 
     def project(self, list_of_vectors):
