@@ -156,9 +156,9 @@ class Cartesian:
     def project(self, list_of_vectors):
         projection = []
         for i in range(self.__num_cones):
-            self.__dimensions.append(_check_dimension(type(self.__cones[i]),
-                                                      self.__cones[i].dimension,
-                                                      list_of_vectors[i]))
+            self.__dimensions[i] = _check_dimension(type(self.__cones[i]),
+                                                    self.__cones[i].dimension,
+                                                    list_of_vectors[i])
             projection.append(self.__cones[i].project(list_of_vectors[i]))
 
         self.__dimension = sum(self.__dimensions)
@@ -167,9 +167,9 @@ class Cartesian:
     def project_onto_dual(self, list_of_vectors):
         projection = []
         for i in range(self.__num_cones):
-            self.__dimensions.append(_check_dimension(type(self.__cones[i]),
-                                                      self.__cones[i].dimension,
-                                                      list_of_vectors[i]))
+            self.__dimensions[i] = _check_dimension(type(self.__cones[i]),
+                                                    self.__cones[i].dimension,
+                                                    list_of_vectors[i])
             projection.append(self.__cones[i].project_onto_dual(list_of_vectors[i]))
 
         self.__dimension = sum(self.__dimensions)
@@ -179,9 +179,9 @@ class Cartesian:
     @property
     def types(self):
         """Cartesian product of cones type"""
-        product = type(self.__cones[0])
+        product = type(self.__cones[0]).__name__
         for i in self.__cones[1:]:
-            product = product + " x " + type(i)
+            product = product + " x " + type(i).__name__
         return product
 
     @property
@@ -193,3 +193,8 @@ class Cartesian:
     def dimensions(self):
         """List of the dimensions of each cone"""
         return self.__dimensions
+
+    @property
+    def num_cones(self):
+        """Number of cones that make up Cartesian cone"""
+        return self.__num_cones

@@ -4,166 +4,278 @@ import numpy as np
 
 
 class TestCones(unittest.TestCase):
+    __real = core_cones.Real()
+    __zero = core_cones.Zero()
+    __nonnegative_orthant = core_cones.NonnegativeOrthant()
+    __second_order_cone = core_cones.SecondOrderCone()
+    __cartesian = core_cones.Cartesian([__real, __zero, __nonnegative_orthant, __second_order_cone])
+    __num_samples = 100
+    __sample_multiplier = 10
+    __cone_dimension = 20
+    __num_test_repeats = 100
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
 
-    def test_cones_uni(self):
+    def test_dimension_check(self):
+        # cone size equals vector size
+        _ = core_cones._check_dimension("Real", 5, np.ones(5))
+
+    def test_dimension_check_failure(self):
+        # cone size does not equal vector size
+        with self.assertRaises(ValueError):
+            _ = core_cones._check_dimension("Real", 5, np.ones(6))
+
+    def test_real_project(self):
         # create cone
-        uni = core_cones.Uni()
-        cones_type = "Uni"
+        cone_type = "Real"
+        real = TestCones.__real
+
+        # create point for projection
+        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            .reshape((TestCones.__cone_dimension, 1))
+
+        # create points for test
+        samples = [None] * TestCones.__num_samples
+        for i in range(TestCones.__num_samples):
+            samples[i] = np.random.randint(-100, 100, 20)  # real samples
+
+        # test real cone
+        self.assertEqual(cone_type, type(real).__name__)
+        projection = real.project(vector)
+        for i in range(TestCones.__num_samples):
+            self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                     - projection.reshape((TestCones.__cone_dimension,)),
+                                     samples[i].reshape((TestCones.__cone_dimension,))
+                                     - projection.reshape((TestCones.__cone_dimension,))) <= 0)
+
+    def test_real_project_dual(self):
+        # create cone
+        cone_type = "Real"
+        real = TestCones.__real
+
+        # create point for projection
+        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension)) \
+            .reshape((TestCones.__cone_dimension, 1))
+
+        # create points for test
+        dual_samples = [None] * TestCones.__num_samples
+        for i in range(TestCones.__num_samples):
+            dual_samples[i] = np.zeros(TestCones.__cone_dimension)  # real dual samples (zero)
+
+        # test real cone
+        self.assertEqual(cone_type, type(real).__name__)
+        projection_onto_dual = real.project_onto_dual(vector)
+        for i in range(TestCones.__num_samples):
+            self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,)),
+                                     dual_samples[i].reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,))) <= 0)
+
+    def test_zero_project(self):
+        # create cone
+        cone_type = "Zero"
+        zero = TestCones.__zero
 
         # create points for projection
-        num_samples = 100
-        multiplier = 10
-        cone_dim = 20
-        x = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
-        samples = [None] * num_samples
-        dual_samples = [None] * num_samples
-        for i in range(num_samples):
-            samples[i] = np.random.randint(-100, 100, 20)  # uni samples
-            dual_samples[i] = np.zeros(cone_dim)  # uni dual samples (zero)
-
-        # test uni
-        self.assertEqual(cones_type, uni.type)
-        projection = uni.project_onto_cone(x)
-        dual_projection = uni.project_onto_dual(x)
-        for i in range(len(samples)):
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - projection.reshape((cone_dim,)),
-                                     samples[i].reshape((cone_dim,)) - projection.reshape((cone_dim,))) <= 0)
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - dual_projection.reshape((cone_dim,)),
-                                     dual_samples[i].reshape((cone_dim,)) - dual_projection.reshape(
-                                         (cone_dim,))) <= 0)
-
-    def test_cones_zero(self):
-        # create cone
-        zero = core_cones.Zero()
-        cones_type = "Zero"
-
-        # create points for projection
-        num_samples = 100
-        multiplier = 10
-        cone_dim = 20
-        x = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
-        samples = [None] * num_samples
-        dual_samples = [None] * num_samples
-        for i in range(num_samples):
-            samples[i] = np.zeros(cone_dim)  # zero samples
-            dual_samples[i] = np.random.randint(-100, 100, 20)  # zero dual samples (uni)
+        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            .reshape((TestCones.__cone_dimension, 1))
+        samples = [None] * TestCones.__num_samples
+        for i in range(TestCones.__num_samples):
+            samples[i] = np.zeros(TestCones.__cone_dimension)  # zero samples
 
         # test zero
-        self.assertEqual(cones_type, zero.type)
-        projection = zero.project_onto_cone(x)
-        dual_projection = zero.project_onto_dual(x)
-        for i in range(len(samples)):
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - projection.reshape((cone_dim,)),
-                                     samples[i].reshape((cone_dim,)) - projection.reshape((cone_dim,))) <= 0)
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - dual_projection.reshape((cone_dim,)),
-                                     dual_samples[i].reshape((cone_dim,)) - dual_projection.reshape(
-                                         (cone_dim,))) <= 0)
+        self.assertEqual(cone_type, type(zero).__name__)
+        projection = zero.project(vector)
+        for i in range(TestCones.__num_samples):
+            self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                     - projection.reshape((TestCones.__cone_dimension,)),
+                                     samples[i].reshape((TestCones.__cone_dimension,))
+                                     - projection.reshape((TestCones.__cone_dimension,))) <= 0)
 
-    def test_cones_non(self):
+    def test_zero_project_dual(self):
         # create cone
-        non = core_cones.NonnegOrth()
-        cones_type = "NonnegOrth"
+        cone_type = "Zero"
+        zero = TestCones.__zero
 
         # create points for projection
-        num_samples = 100
-        multiplier = 10
-        cone_dim = 20
-        x = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
-        samples = [None] * num_samples
-        dual_samples = [None] * num_samples
-        for i in range(num_samples):
-            samples[i] = np.random.randint(0, 100, cone_dim)  # non samples
-            dual_samples[i] = samples[i]
+        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            .reshape((TestCones.__cone_dimension, 1))
+        dual_samples = [None] * TestCones.__num_samples
+        for i in range(TestCones.__num_samples):
+            dual_samples[i] = np.random.randint(-100, 100, TestCones.__cone_dimension)  # zero dual samples (real)
+
+        # test zero dual
+        self.assertEqual(cone_type, type(zero).__name__)
+        projection_onto_dual = zero.project_onto_dual(vector)
+        for i in range(TestCones.__num_samples):
+            self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,)),
+                                     dual_samples[i].reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,))) <= 0)
+
+    def test_nonnegative_orthant_project(self):
+        # create cone
+        cone_type = "NonnegativeOrthant"
+        nonnegative_orthant = TestCones.__nonnegative_orthant
+
+        # create points for projection
+        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            .reshape((TestCones.__cone_dimension, 1))
+        samples = [None] * TestCones.__num_samples
+        for i in range(TestCones.__num_samples):
+            samples[i] = np.random.randint(0, 100, TestCones.__cone_dimension)  # non samples
 
         # test non
-        self.assertEqual(cones_type, non.type)
-        projection = non.project_onto_cone(x)
-        dual_projection = non.project_onto_dual(x)
-        for i in range(len(samples)):
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - projection.reshape((cone_dim,)),
-                                     samples[i].reshape((cone_dim,)) - projection.reshape((cone_dim,))) <= 0)
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - dual_projection.reshape((cone_dim,)),
-                                     dual_samples[i].reshape((cone_dim,)) - dual_projection.reshape(
-                                         (cone_dim,))) <= 0)
+        self.assertEqual(cone_type, type(nonnegative_orthant).__name__)
+        projection = nonnegative_orthant.project(vector)
+        for i in range(TestCones.__num_samples):
+            self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                     - projection.reshape((TestCones.__cone_dimension,)),
+                                     samples[i].reshape((TestCones.__cone_dimension,))
+                                     - projection.reshape((TestCones.__cone_dimension,))) <= 0)
 
-    def test_cones_soc(self):
+    def test_nonnegative_orthant_project_dual(self):
         # create cone
-        soc = core_cones.SOC()
-        cones_type = "SOC"
+        cone_type = "NonnegativeOrthant"
+        nonnegative_orthant = TestCones.__nonnegative_orthant
 
         # create points for projection
-        num_samples = 100
-        multiplier = 10
-        cone_dim = 20
-        x = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
-        samples = [None] * num_samples
-        dual_samples = [None] * num_samples
-        for i in range(num_samples):
-            s = np.random.randint(-100, 100, cone_dim - 1)
+        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            .reshape((TestCones.__cone_dimension, 1))
+        dual_samples = [None] * TestCones.__num_samples
+        for i in range(TestCones.__num_samples):
+            dual_samples[i] = np.random.randint(0, 100, TestCones.__cone_dimension)  # non samples
+
+        # test non
+        self.assertEqual(cone_type, type(nonnegative_orthant).__name__)
+        projection_onto_dual = nonnegative_orthant.project_onto_dual(vector)
+        for i in range(TestCones.__num_samples):
+            self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,)),
+                                     dual_samples[i].reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,))) <= 0)
+
+    def test_second_order_cone_project(self):
+        # create cone
+        cone_type = "SecondOrderCone"
+        second_order_cone = TestCones.__second_order_cone
+
+        # repeat only required here because soc cone calculation is not straightforward (and cone is self dual)
+        for _ in range(TestCones.__num_test_repeats):
+            # create points for projection
+            vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+                .reshape((TestCones.__cone_dimension, 1))
+            samples = [None] * TestCones.__num_samples
+            for i in range(TestCones.__num_samples):
+                s = np.random.randint(-100, 100, TestCones.__cone_dimension - 1)
+                t = np.linalg.norm(s)
+                samples[i] = (np.hstack((s, t)))  # soc samples
+
+            # test soc
+            self.assertEqual(cone_type, type(second_order_cone).__name__)
+            projection = second_order_cone.project(vector)
+            for i in range(TestCones.__num_samples):
+                self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                         - projection.reshape((TestCones.__cone_dimension,)),
+                                         samples[i].reshape((TestCones.__cone_dimension,))
+                                         - projection.reshape((TestCones.__cone_dimension,))) <= 0)
+
+    def test_second_order_cone_project_dual(self):
+        # create cone
+        cone_type = "SecondOrderCone"
+        second_order_cone = TestCones.__second_order_cone
+
+        # create points for projection
+        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            .reshape((TestCones.__cone_dimension, 1))
+        dual_samples = [None] * TestCones.__num_samples
+        for i in range(TestCones.__num_samples):
+            s = np.random.randint(-100, 100, TestCones.__cone_dimension - 1)
             t = np.linalg.norm(s)
-            samples[i] = (np.hstack((s, t)))  # soc samples
-            dual_samples[i] = samples[i]
+            dual_samples[i] = (np.hstack((s, t)))  # soc samples
 
         # test soc
-        self.assertEqual(cones_type, soc.type)
-        projection = soc.project_onto_cone(x)
-        dual_projection = soc.project_onto_dual(x)
-        for i in range(len(samples)):
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - projection.reshape((cone_dim,)),
-                                     samples[i].reshape((cone_dim,)) - projection.reshape((cone_dim,))) <= 0)
-            self.assertTrue(np.inner(x.reshape((cone_dim,)) - dual_projection.reshape((cone_dim,)),
-                                     dual_samples[i].reshape((cone_dim,)) - dual_projection.reshape(
-                                         (cone_dim,))) <= 0)
+        self.assertEqual(cone_type, type(second_order_cone).__name__)
+        projection_onto_dual = second_order_cone.project_onto_dual(vector)
+        for i in range(TestCones.__num_samples):
+            self.assertTrue(np.inner(vector.reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,)),
+                                     dual_samples[i].reshape((TestCones.__cone_dimension,))
+                                     - projection_onto_dual.reshape((TestCones.__cone_dimension,))) <= 0)
 
-    def test_cones_cart(self):
-        # create cones
-        uni = core_cones.Uni()
-        zero = core_cones.Zero()
-        non = core_cones.NonnegOrth()
-        soc = core_cones.SOC()
-        cones = [uni, zero, non, soc]
-        cart = core_cones.Cart(cones)
-        cart_type = "Uni x Zero x NonnegOrth x SOC"
+    def test_cartesian_project(self):
+        # create cone
+        cone_type = "Cartesian"
+        cones_type = "Real x Zero x NonnegativeOrthant x SecondOrderCone"
+        cartesian = TestCones.__cartesian
 
         # create points for projection
-        num_cones = len(cones)
-        num_samples = 100
-        multiplier = 10
-        x = [None] * num_cones
-        cone_dim = 20
+        num_cones = cartesian.num_cones
+        vector = [None] * num_cones
         samples = []
-        for i in range(num_cones * 2):
-            samples.append([None] * num_samples)
         for i in range(num_cones):
-            x[i] = np.array(multiplier * np.random.rand(cone_dim)).reshape((cone_dim, 1))
+            samples.append([None] * TestCones.__num_samples)
+            vector[i] = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+                .reshape((TestCones.__cone_dimension, 1))
 
         # create set samples
-        for i in range(num_samples):
-            samples[0][i] = np.random.randint(-100, 100, 20)  # uni samples
-            samples[1][i] = np.zeros(cone_dim)  # zero samples
-            samples[2][i] = np.random.randint(0, 100, cone_dim)  # non samples
-            s = np.random.randint(-100, 100, cone_dim - 1)
+        for i in range(TestCones.__num_samples):
+            samples[0][i] = np.random.randint(-100, 100, TestCones.__cone_dimension)  # real samples
+            samples[1][i] = np.zeros(TestCones.__cone_dimension)  # zero samples
+            samples[2][i] = np.random.randint(0, 100, TestCones.__cone_dimension)  # non samples
+            s = np.random.randint(-100, 100, TestCones.__cone_dimension - 1)
             t = np.linalg.norm(s)
             samples[3][i] = np.hstack((s, t))  # soc samples
-            samples[4][i] = np.random.randint(-100, 100, cone_dim)  # uni dual samples (zero)
-            samples[5][i] = np.zeros(cone_dim)  # zero dual samples (uni)
-        samples[6] = samples[2]
-        samples[7] = samples[3]
 
         # test cartesian
-        self.assertEqual(cart_type, cart.type)
-        projection = cart.project_onto_cone([x[0], x[1], x[2], x[3]])
-        dual_projection = cart.project_onto_cone([x[0], x[1], x[2], x[3]])
+        self.assertEqual(cone_type, type(cartesian).__name__)
+        self.assertEqual(cones_type, cartesian.types)
+        projection = cartesian.project([vector[0], vector[1], vector[2], vector[3]])
         for i in range(num_cones):
-            for j in range(len(samples[0])):
-                self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - projection[i].reshape((cone_dim,))),
-                                         (samples[i][j].reshape((cone_dim,)) - projection[i].reshape(
-                                             (cone_dim,)))) <= 0)
-                self.assertTrue(np.inner((x[i].reshape((cone_dim,)) - dual_projection[i].reshape((cone_dim,))),
-                                         (samples[i + num_cones][j].reshape((cone_dim,)) - dual_projection[
-                                             i].reshape(
-                                             (cone_dim,)))) <= 0)
+            for j in range(TestCones.__num_samples):
+                self.assertTrue(np.inner((vector[i].reshape((TestCones.__cone_dimension,))
+                                          - projection[i].reshape((TestCones.__cone_dimension,))),
+                                         (samples[i][j].reshape((TestCones.__cone_dimension,))
+                                          - projection[i].reshape((TestCones.__cone_dimension,)))) <= 0)
+
+    def test_cartesian_project_dual(self):
+        # create cone
+        cone_type = "Cartesian"
+        cones_type = "Real x Zero x NonnegativeOrthant x SecondOrderCone"
+        cartesian = TestCones.__cartesian
+
+        # create points for projection
+        num_cones = cartesian.num_cones
+        vector = [None] * num_cones
+        dual_samples = []
+        for i in range(num_cones):
+            dual_samples.append([None] * TestCones.__num_samples)
+            vector[i] = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+                .reshape((TestCones.__cone_dimension, 1))
+
+        # create set samples
+        for i in range(TestCones.__num_samples):
+            dual_samples[0][i] = np.zeros(TestCones.__cone_dimension)  # real dual samples (zero)
+            dual_samples[1][i] = np.random.randint(-100, 100, TestCones.__cone_dimension)  # zero dual samples (real)
+            dual_samples[2][i] = np.random.randint(0, 100, TestCones.__cone_dimension)  # non dual samples (non)
+            s = np.random.randint(-100, 100, TestCones.__cone_dimension - 1)
+            t = np.linalg.norm(s)
+            dual_samples[3][i] = np.hstack((s, t))  # soc samples (soc)
+
+        # test cartesian
+        self.assertEqual(cone_type, type(cartesian).__name__)
+        self.assertEqual(cones_type, cartesian.types)
+        projection_onto_dual = cartesian.project_onto_dual([vector[0], vector[1], vector[2], vector[3]])
+        for i in range(num_cones):
+            for j in range(TestCones.__num_samples):
+                self.assertTrue(np.inner((vector[i].reshape((TestCones.__cone_dimension,))
+                                          - projection_onto_dual[i].reshape((TestCones.__cone_dimension,))),
+                                         (dual_samples[i][j].reshape((TestCones.__cone_dimension,))
+                                          - projection_onto_dual[i].reshape((TestCones.__cone_dimension,)))) <= 0)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
