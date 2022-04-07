@@ -1,30 +1,45 @@
 import numpy as np
 
 
-class Uni:
+def _check_dimension(cone_type, cone_dimension, vector):
     """
-    The universe cone (R^n)
+    Function for checking cone dimensions against given vector
+
+    If dimensions match, return vector size.
+    If dimensions do not match, raise error.
+    """
+    vector_dimension = vector.size
+    if cone_dimension is None:
+        cone_dimension = vector_dimension
+    if cone_dimension != vector_dimension:
+        raise ValueError('%s cone dimension error: cone dimension = %d, input vector dimension = %d'
+                         % (cone_type, cone_dimension, vector_dimension))
+    else:
+        return vector_dimension
+
+
+class Real:
+    """
+    A cone of reals of dimension n (R^n)
     """
 
-    def __init__(self):
-        self.__dimension = 0
+    def __init__(self, dimension=None):
+        self.__dimension = dimension
+        self.__shape = None
 
-    def project_onto_cone(self, x):
-        self.__dimension = x.size
-        return x
+    def project(self, vector):
+        self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        self.__shape = vector.shape
+        projection = vector.copy()
+        return projection
 
-    def project_onto_dual(self, x):  # the dual of universe is zero
-        self.__dimension = x.size
-        shape = x.shape
-        proj_x = np.zeros(self.__dimension).reshape(shape)
-        return proj_x
+    def project_onto_dual(self, vector):  # the dual of real is zero
+        self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        self.__shape = vector.shape
+        projection = np.zeros(self.__dimension).reshape(self.__shape)
+        return projection
 
     # GETTERS
-    @property
-    def type(self):
-        """Universe type"""
-        return "Uni"
-
     @property
     def dimension(self):
         """Cone dimension"""
@@ -33,146 +48,146 @@ class Uni:
 
 class Zero:
     """
-    The zero cone ({0})
+    A zero cone ({0})
     """
 
-    def __init__(self):
-        self.__dimension = 0
+    def __init__(self, dimension=None):
+        self.__dimension = dimension
+        self.__shape = None
 
-    def project_onto_cone(self, x):
-        self.__dimension = x.size
-        shape = x.shape
-        proj_x = np.zeros(self.__dimension).reshape(shape)
-        return proj_x
+    def project(self, vector):
+        self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        self.__shape = vector.shape
+        projection = np.zeros(self.__dimension).reshape(self.__shape)
+        return projection
 
-    def project_onto_dual(self, x):  # the dual of zero is universe
-        self.__dimension = x.size
-        return x
+    def project_onto_dual(self, vector):  # the dual of zero is real
+        self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        self.__shape = vector.shape
+        projection = vector.copy()
+        return projection
 
     # GETTERS
-    @property
-    def type(self):
-        """Zero type"""
-        return "Zero"
-
     @property
     def dimension(self):
         """Cone dimension"""
         return self.__dimension
 
 
-class NonnegOrth:
+class NonnegativeOrthant:
     """
-    The nonnegative orthant cone (R^n_+)
+    A nonnegative orthant cone of dimension n (R^n_+)
     """
 
-    def __init__(self):
-        self.__dimension = 0
+    def __init__(self, dimension=None):
+        self.__dimension = dimension
+        self.__shape = None
 
-    def project_onto_cone(self, x):
-        self.__dimension = x.size
-        proj_x = np.empty((self.__dimension, 1))
+    def project(self, vector):
+        self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        self.__shape = vector.shape
+        projection = np.empty(self.__shape)
         for i in range(self.__dimension):
-            proj_x[i] = max(0, x[i])
-        return proj_x
+            projection[i] = max(0, vector[i])
+        return projection
 
-    def project_onto_dual(self, x):  # this cone is self dual
-        return NonnegOrth.project_onto_cone(self, x)
+    def project_onto_dual(self, vector):  # this cone is self dual
+        return NonnegativeOrthant.project(self, vector)
 
     # GETTERS
-    @property
-    def type(self):
-        """Nonnegative Orthant type"""
-        return "NonnegOrth"
-
     @property
     def dimension(self):
         """Cone dimension"""
         return self.__dimension
 
 
-class SOC:
+class SecondOrderCone:
     """
-    The second order cone (N^n_2)
+    A second order cone (N^n_2)
     """
 
-    def __init__(self):
-        self.__dimension = 0
+    def __init__(self, dimension=None):
+        self.__dimension = dimension
+        self.__shape = None
 
-    def project_onto_cone(self, x):
-        self.__dimension = x.size
-        proj_x = x
-        r = x[-1]
-        s = np.delete(x, -1)  # returns row vector
-        s_2norm = np.linalg.norm(s)
-        if s_2norm <= r:
-            pass  # proj_x = x
-        elif s_2norm <= -r:
-            proj_x = np.zeros(self.__dimension).reshape((self.__dimension, 1))
+    def project(self, vector):
+        self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        self.__shape = vector.shape
+        last_part = vector[-1].reshape(1, 1)
+        first_part = vector[0:-1]
+        two_norm_of_first_part = np.linalg.norm(first_part)
+        if two_norm_of_first_part <= last_part:
+            projection = vector.copy()
+            return projection
+        elif two_norm_of_first_part <= -last_part:
+            projection = np.zeros(shape=self.__shape)
+            return projection
         else:
-            proj_r = (s_2norm + r) / 2
-            proj_s = proj_r * (s/s_2norm)
-            proj_x = np.concatenate((proj_s, proj_r)).reshape((self.__dimension, 1))
-        return proj_x
+            projection_of_last_part = (two_norm_of_first_part + last_part) / 2
+            projection_of_first_part = projection_of_last_part * (first_part/two_norm_of_first_part)
+            projection = np.concatenate((projection_of_first_part,
+                                         projection_of_last_part)).reshape(self.__shape)
+            return projection
 
-    def project_onto_dual(self, x):  # this cone is self dual
-        return SOC.project_onto_cone(self, x)
+    def project_onto_dual(self, vector):  # this cone is self dual
+        return SecondOrderCone.project(self, vector)
 
     # GETTERS
-    @property
-    def type(self):
-        """Second Order Cone type"""
-        return "SOC"
-
     @property
     def dimension(self):
         """Cone dimension"""
         return self.__dimension
 
 
-class Cart:
+class Cartesian:
     """
-    The Cartesian product of cones (cone x cone)
+    The Cartesian product of cones (cone x cone x ...)
     """
 
     def __init__(self, cones):
         """
-        :param cones: list of cones
+        :param cones: ordered list of cones
         """
-        self.__dimension = 0
-        self.__dimensions = []
         self.__cones = cones
         self.__num_cones = len(cones)
+        self.__dimension = 0
+        for i in self.__cones:
+            if i.dimension is None:
+                self.__dimension = None
+                break
+            else:
+                self.__dimension += i.dimension
+        self.__dimensions = [None] * self.__num_cones
 
-    def project_onto_cone(self, x):
-        size = []
-        proj_x = []
-        for i in range(len(x)):
-            size.append(x[i].size)
-            proj_x.append(self.__cones[i].project_onto_cone(x[i]))
+    def project(self, list_of_vectors):
+        projection = []
+        for i in range(self.__num_cones):
+            self.__dimensions[i] = _check_dimension(type(self.__cones[i]),
+                                                    self.__cones[i].dimension,
+                                                    list_of_vectors[i])
+            projection.append(self.__cones[i].project(list_of_vectors[i]))
 
-        self.__dimension = sum(size)
-        self.__dimensions = size
-        return proj_x
+        self.__dimension = sum(self.__dimensions)
+        return projection
 
-    def project_onto_dual(self, x):
-        size = []
-        proj_x = []
-        for i in range(len(x)):
-            size.append(x[i].size)
-            proj_x.append(self.__cones[i].project_onto_dual(x[i]))
+    def project_onto_dual(self, list_of_vectors):
+        projection = []
+        for i in range(self.__num_cones):
+            self.__dimensions[i] = _check_dimension(type(self.__cones[i]),
+                                                    self.__cones[i].dimension,
+                                                    list_of_vectors[i])
+            projection.append(self.__cones[i].project_onto_dual(list_of_vectors[i]))
 
-        self.__dimension = sum(size)
-        self.__dimensions = size
-        return proj_x
+        self.__dimension = sum(self.__dimensions)
+        return projection
 
     # GETTERS
     @property
-    def type(self):
+    def types(self):
         """Cartesian product of cones type"""
-        product = self.__cones[0].type
+        product = type(self.__cones[0]).__name__
         for i in self.__cones[1:]:
-            product = product + " x " + i.type
+            product = product + " x " + type(i).__name__
         return product
 
     @property
@@ -184,3 +199,8 @@ class Cart:
     def dimensions(self):
         """List of the dimensions of each cone"""
         return self.__dimensions
+
+    @property
+    def num_cones(self):
+        """Number of cones that make up Cartesian cone"""
+        return self.__num_cones

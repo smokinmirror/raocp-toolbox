@@ -1,14 +1,16 @@
 import unittest
-import raocp.core as rc
+import raocp.core.scenario_tree as core_tree
+import raocp.core.problem_spec as core_spec
 import numpy as np
-import raocp.core.cones as core_cones
 
 
 class TestRAOCP(unittest.TestCase):
     __tree_from_markov = None
     __tree_from_iid = None
     __raocp_from_markov = None
+    __raocp_from_markov_with_markov = None
     __raocp_from_iid = None
+    __good_size = 3
 
     @staticmethod
     def __construct_tree_from_markov():
@@ -19,35 +21,43 @@ class TestRAOCP(unittest.TestCase):
             v = np.array([0.5, 0.5, 0])
             (N, tau) = (4, 3)
             TestRAOCP.__tree_from_markov = \
-                rc.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
+                core_tree.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @staticmethod
     def __construct_raocp_from_markov():
         if TestRAOCP.__raocp_from_markov is None:
             tree = TestRAOCP.__tree_from_markov
 
-            Aw1 = np.eye(2)
-            Aw2 = 2 * np.eye(2)
-            Aw3 = 3 * np.eye(2)
-            As = [Aw1, Aw2, Aw3]  # n x n matrices
+            # construct markovian set of system and control dynamics
+            system = np.eye(2)
+            set_system = [system, 2 * system, 3 * system]  # n x n matrices
+            control = np.eye(2)
+            set_control = [control, 2 * control, 3 * control]  # n x u matrices
 
-            Bw1 = np.eye(2)
-            Bw2 = 2 * np.eye(2)
-            Bw3 = 3 * np.eye(2)
-            Bs = [Bw1, Bw2, Bw3]  # n x u matrices
+            # construct cost weight matrices
+            cost_type = "Quadratic"
+            cost_types = [cost_type] * 3
+            nonleaf_state_weight = 10 * np.eye(2)  # n x n matrix
+            nonleaf_state_weights = [nonleaf_state_weight, 2 * nonleaf_state_weight, 3 * nonleaf_state_weight]
+            control_weight = np.eye(2)  # u x u matrix OR scalar
+            control_weights = [control_weight, 2 * control_weight, 3 * control_weight]
+            leaf_state_weight = 5 * np.eye(2)  # n x n matrix
 
-            cost_type = "quadratic"
-            Q = 10 * np.eye(2)  # n x n matrix
-            R = np.eye(2)  # u x u matrix OR scalar
-            Pf = 5 * np.eye(2)  # n x n matrix
-
+            # define risks
             (risk_type, alpha) = ("AVaR", 0.5)
 
-            TestRAOCP.__raocp_from_markov = rc.MarkovChainRAOCPProblemBuilder(scenario_tree=tree) \
-                .with_possible_As_and_Bs(As, Bs) \
-                .with_all_cost(cost_type, Q, R, Pf) \
-                .with_all_risk(risk_type, alpha) \
-                .create()
+            # create problem
+            TestRAOCP.__raocp_from_markov = core_spec.RAOCP(scenario_tree=tree) \
+                .with_all_nonleaf_costs(cost_type, nonleaf_state_weight, control_weight) \
+                .with_all_leaf_costs(cost_type, leaf_state_weight) \
+                .with_all_risks(risk_type, alpha)
+            # .with_markovian_dynamics(set_system, set_control) \
+
+            TestRAOCP.__raocp_from_markov_with_markov = core_spec.RAOCP(scenario_tree=tree) \
+                .with_markovian_dynamics(set_system, set_control) \
+                .with_markovian_costs(cost_types, nonleaf_state_weights, control_weights) \
+                .with_all_leaf_costs(cost_type, leaf_state_weight) \
+                .with_all_risks(risk_type, alpha)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -55,76 +65,73 @@ class TestRAOCP(unittest.TestCase):
         TestRAOCP.__construct_tree_from_markov()
         TestRAOCP.__construct_raocp_from_markov()
 
-    def test_A_B_at_node(self):
+    def test_markovian_dynamics_list(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov_with_markov
+        self.assertTrue(raocp.list_of_dynamics[0] is None)
+        for i in range(1, tree.num_nodes):
+            self.assertTrue(raocp.list_of_dynamics[i] is not None)
+
+    def test_markovian_nonleaf_costs_list(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov_with_markov
+        for i in range(1, tree.num_nodes):
+            self.assertTrue(raocp.list_of_nonleaf_costs[i] is not None)
+
+    def test_leaf_costs_list(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
-        Aw1 = np.eye(2)
-        Aw2 = 2 * np.eye(2)
-        Aw3 = 3 * np.eye(2)
-        test_As = [Aw1, Aw2, Aw3]  # n x n matrices
+        for i in range(tree.num_nodes):
+            if i < tree.num_nonleaf_nodes:
+                self.assertTrue(raocp.list_of_leaf_costs[i] is None)
+            else:
+                self.assertTrue(raocp.list_of_leaf_costs[i] is not None)
 
-        Bw1 = np.eye(2)
-        Bw2 = 2 * np.eye(2)
-        Bw3 = 3 * np.eye(2)
-        test_Bs = [Bw1, Bw2, Bw3]  # n x u matrices
+    def test_risks_list(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov
+        for i in range(tree.num_nonleaf_nodes):
+            self.assertTrue(raocp.list_of_risks[i] is not None)
 
-        num_nodes = tree.num_nodes()
-        for i_node in range(1, num_nodes):
-            w_value_at_node = tree.value_at_node(i_node)
-            test_A_at_node = test_As[w_value_at_node]
-            A_at_node = raocp.A_at_node(i_node)
-            test_B_at_node = test_Bs[w_value_at_node]
-            B_at_node = raocp.B_at_node(i_node)
-            for row in range(test_A_at_node.shape[0]):
-                for column in range(test_A_at_node.shape[1]):
-                    self.assertEqual(test_A_at_node[row, column], A_at_node[row, column])
-                    self.assertEqual(test_B_at_node[row, column], B_at_node[row, column])
+    def test_markovian_system_dynamics_failure(self):
+        tree = TestRAOCP.__tree_from_markov
 
-    def test_cones(self):
-        tol = 1e-10
-        # create cones
-        uni = core_cones.Uni()
-        zero = core_cones.Zero()
-        non = core_cones.NonnegOrth()
-        soc = core_cones.SOC()
-        cones = [uni, zero, non, soc]
-        cart = core_cones.Cart(cones)
+        # construct bad markovian set of system dynamics
+        set_system = [np.eye(TestRAOCP.__good_size + 1), np.eye(TestRAOCP.__good_size)]  # n x n matrices
+        # construct good markovian set of control dynamics
+        control = np.ones((TestRAOCP.__good_size, 1))
+        set_control = [control, 2 * control]  # n x u matrices
 
-        # create test examples
-        x = np.array([[-10], [-5], [0], [5], [10]])
-        x_list = [x, x, x, x]
-        cones_type = ["Uni", "Zero", "NonnegOrth", "SOC"]
-        cart_type = "Uni x Zero x NonnegOrth x SOC"
-        cones_project_onto_cone = [x, np.zeros(x.shape), np.array([[0], [0], [0], [5], [10]]),
-                                   np.array([[-9.082482904638630], [-4.541241452319315],
-                                             [0], [4.541241452319315], [11.123724356957945]])]
-        cones_project_onto_dual = [np.zeros(x.shape), x, np.array([[0], [0], [0], [5], [10]]),
-                                   np.array([[-9.082482904638630], [-4.541241452319315],
-                                             [0], [4.541241452319315], [11.123724356957945]])]
-        cones_dimension = [5, 5, 5, 5]
+        # construct problem with error catch
+        with self.assertRaises(ValueError):
+            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
 
-        # test cones
-        for i_cones in range(len(cones_type)):
-            self.assertEqual(cones_type[i_cones], cones[i_cones].type)
-            for row in range(cones_project_onto_cone[i_cones].shape[0]):
-                for column in range(cones_project_onto_cone[i_cones].shape[1]):
-                    self.assertAlmostEqual(cones_project_onto_cone[i_cones][row, column],
-                                           cones[i_cones].project_onto_cone(x_list[i_cones])[row, column], delta=tol)
-                    self.assertAlmostEqual(cones_project_onto_dual[i_cones][row, column],
-                                           cones[i_cones].project_onto_dual(x_list[i_cones])[row, column], delta=tol)
+    def test_markovian_control_dynamics_failure(self):
+        tree = TestRAOCP.__tree_from_markov
 
-        # test Cart
-        for i_cones in range(len(cones_type)):
-            self.assertEqual(cart_type, cart.type)
-            for row in range(cones_project_onto_cone[i_cones].shape[0]):
-                for column in range(cones_project_onto_cone[i_cones].shape[1]):
-                    self.assertAlmostEqual(cones_project_onto_cone[i_cones][row, column],
-                                           cart.project_onto_cone(x_list)[i_cones][row, column], delta=tol)
-                    self.assertAlmostEqual(cones_project_onto_dual[i_cones][row, column],
-                                           cart.project_onto_dual(x_list)[i_cones][row, column], delta=tol)
-            self.assertEqual(20, cart.dimension)
-        for i_cones in range(len(cones_type)):
-            self.assertEqual(cones_dimension[i_cones], cart.dimensions[i_cones])
+        # construct good markovian set of system dynamics
+        system = np.eye(TestRAOCP.__good_size)
+        set_system = [system, 2 * system]  # n x n matrices
+        # construct bad markovian set of control dynamics
+        set_control = [np.ones((TestRAOCP.__good_size + 1, 1)), np.ones((TestRAOCP.__good_size, 1))]  # n x u matrices
+
+        # construct problem with error catch
+        with self.assertRaises(ValueError):
+            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
+
+    def test_markovian_system_and_control_dynamics_failure(self):
+        tree = TestRAOCP.__tree_from_markov
+
+        # construct good markovian set of system dynamics (rows = 3)
+        system = np.eye(TestRAOCP.__good_size)
+        set_system = [system, 2 * system]  # n x n matrices
+        # construct good markovian set of control dynamics  (rows = 4)
+        control = np.ones((TestRAOCP.__good_size + 1, 1))
+        set_control = [control, 2 * control]  # n x u matrices
+
+        # construct problem with error catch
+        with self.assertRaises(ValueError):
+            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
 
 
 if __name__ == '__main__':

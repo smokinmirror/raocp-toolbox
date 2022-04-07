@@ -23,27 +23,26 @@ tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
 
 # RAOCP generation -----------------------------------------------------------------------------------------------------
 
-Aw1 = np.eye(3)
-Aw2 = 2*np.eye(3)
-Aw3 = 3*np.eye(3)
-As = [Aw1, Aw2, Aw3]  # n x n matrices
+Aw = np.eye(3)
+As = [Aw, 2 * Aw, 3 * Aw]  # n x n matrices
 
-Bw1 = np.eye(3)
-Bw2 = 2*np.eye(3)
-Bw3 = 3*np.eye(3)
-Bs = [Bw1, Bw2, Bw3]  # n x u matrices
+Bw = np.eye(3)
+Bs = [Bw, 2 * Bw, 3 * Bw]  # n x u matrices
 
-cost_type = "quadratic"
-Q = 5*np.eye(3)  # n x n matrix
-R = np.eye(3)  # u x u matrix OR scalar
-Pf = 7*np.eye(3)  # n x n matrix
+cost_type = "Quadratic"
+cost_types = [cost_type] * 3
+Q = 10*np.eye(2)  # n x n matrix
+Qs = [Q, 2 * Q, 3 * Q]
+R = np.eye(2)  # u x u matrix OR scalar
+Rs = [R, 2 * R, 3 * R]
+Pf = 5*np.eye(2)  # n x n matrix
 
 (risk_type, alpha) = ("AVaR", 0.5)
-problem = r.core.MarkovChainRAOCPProblemBuilder(scenario_tree=tree)\
-    .with_possible_As_and_Bs(As, Bs)\
-    .with_all_cost(cost_type, Q, R, Pf)\
-    .with_all_risk(risk_type, alpha)\
-    .create()
+problem = r.core.RAOCP(scenario_tree=tree)\
+    .with_markovian_dynamics(As, Bs)\
+    .with_markovian_costs(cost_types, Qs, Rs) \
+    .with_all_leaf_costs(cost_type, Pf)\
+    .with_all_risks(risk_type, alpha)
 
 # print(problem)
 

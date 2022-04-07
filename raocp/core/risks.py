@@ -7,66 +7,63 @@ class AVaR:
     Risk item: Average Value at Risk class
     """
 
-    def __init__(self, alpha, pi, node):
+    def __init__(self, alpha, probabilities):
         """
         :param alpha: AVaR risk parameter
-        :param pi: probabilities of children events at node
-        :param node: current node
+        :param probabilities: list of probabilities of future events
 
         Note: ambiguity sets of coherent risk measures can be expressed by conic inequalities,
                 defined by a tuple (E, F, cone, b)
         """
-        self.__alpha = alpha
-        self.__num_children = len(pi)
-        self.__pi = np.asarray(pi).reshape(self.__num_children, 1)
-        self.__node = node
+        if 0 <= alpha <= 1:
+            self.__alpha = alpha
+        else:
+            raise ValueError("alpha value '%d' not supported" % alpha)
+        self.__num_children = len(probabilities)
+        self.__children_probabilities = np.asarray(probabilities).reshape(self.__num_children, 1)
 
-        self.__E = None
-        self.__F = None
+        self.__matrix_e = None  # coefficient matrix of mu
+        self.__matrix_f = None  # coefficient matrix of nu
         self.__cone = None
-        self.__b = None
+        self.__vector_b = None
         self.__make_e_f_cone_b()
 
     def __make_e_f_cone_b(self):
         eye = np.eye(self.__num_children)
-        self.__E = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
-        self.__F = np.empty((2*self.__num_children+1, 0))
-        self.__b = np.vstack((self.__pi, np.zeros((self.__num_children, 1)), 1))
-        self.__cone = core_cones.Cart([core_cones.NonnegOrth(), core_cones.NonnegOrth(), core_cones.Zero()])
+        self.__matrix_e = np.vstack((self.__alpha*eye, -eye, np.ones((1, self.__num_children))))
+        self.__matrix_f = np.zeros((2 * self.__num_children + 1, 0))
+        self.__cone = core_cones.Cartesian([core_cones.NonnegativeOrthant(dimension=2 * self.__num_children),
+                                            core_cones.Zero(dimension=1)])
+        self.__vector_b = np.vstack((self.__children_probabilities, np.zeros((self.__num_children, 1)), 1))
 
     # GETTERS
-    @property
-    def type(self):
-        """Risk type"""
-        return "AVaR"
-
     @property
     def alpha(self):
         """AVaR risk parameter alpha"""
         return self.__alpha
 
     @property
-    def E(self):
+    def matrix_e(self):
         """Ambiguity set matrix E"""
-        return self.__E
+        return self.__matrix_e
 
     @property
-    def F(self):
+    def matrix_f(self):
         """Ambiguity set matrix F"""
-        return self.__F
+        return self.__matrix_f
 
     @property
     def cone(self):
         """Ambiguity set cone"""
-        return self.__cone.type
+        return self.__cone
 
     @property
-    def b(self):
+    def vector_b(self):
         """Ambiguity set vector b"""
-        return self.__b
+        return self.__vector_b
 
     def __str__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
+        return f"Risk item; type: {type(self).__name__}, alpha: {self.__alpha}; cone: {self.__cone.types}"
 
     def __repr__(self):
-        return f"Risk item at node {self.__node}; type: AVaR, alpha: {self.__alpha}"
+        return f"Risk item; type: {type(self).__name__}, alpha: {self.__alpha}; cone: {self.__cone.types}"
