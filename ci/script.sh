@@ -26,6 +26,10 @@ regular_test() {
     # --- run the tests
     # export PYTHONPATH=.
     python -W ignore tests/test_scenario_tree.py -v
+    python -W ignore tests/test_raocp.py -v
+    python -W ignore tests/test_cones.py -v
+    python -W ignore tests/test_costs.py -v
+    python -W ignore tests/test_risks.py -v
 }
 
 

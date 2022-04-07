@@ -23,8 +23,9 @@ class ScenarioTree:
     Scenario tree creation and visualisation
     """
 
-    def __init__(self, stages, ancestors, probability, w_values=None):
+    def __init__(self, stages, ancestors, probability, w_values=None, is_markovian=False):
         """
+        :param tree_factory: tree factory used to create tree
         :param stages: integer number of total tree stages (N+1)
         :param ancestors: array where `array position=node number` and `value at position=node ancestor`
         :param probability: array where `array position=node number` and `value at position=probability node occurs`
@@ -32,6 +33,7 @@ class ScenarioTree:
 
         Note: avoid using this constructor directly; use a factory instead
         """
+        self.__is_markovian = is_markovian
         self.__stages = stages
         self.__ancestors = ancestors
         self.__probability = probability
@@ -41,17 +43,14 @@ class ScenarioTree:
         self.__update_children()
         self.__allocate_data()
 
-    def __num_nonleaf_nodes(self):
-        return np.sum(self.__stages < self.num_stages())
-
     def __update_children(self):
         self.__children = []
-        for i in range(self.__num_nonleaf_nodes()):
+        for i in range(self.num_nonleaf_nodes):
             children_of_i = np.where(self.__ancestors == i)
             self.__children += children_of_i
 
     def __allocate_data(self):
-        self.__data = np.empty(shape=(self.num_nodes(), ), dtype=dict)
+        self.__data = np.empty(shape=(self.num_nodes, ), dtype=dict)
         
     def get_data_at_node(self, node_idx):
         """
@@ -70,12 +69,22 @@ class ScenarioTree:
         """
         self.__data[node_idx] = data_dict
 
+    @property
+    def is_markovian(self):
+        return self.__is_markovian
+
+    @property
+    def num_nonleaf_nodes(self):
+        return np.sum(self.__stages < self.num_stages)
+
+    @property
     def num_nodes(self):
         """
         :return: total number of nodes of the tree
         """
         return len(self.__ancestors)
 
+    @property
     def num_stages(self):
         """
         :return: number of stages
@@ -146,13 +155,13 @@ class ScenarioTree:
         return prob_children / prob_node_idx
 
     def __str__(self):
-        return f"Scenario Tree\n+ Nodes: {self.num_nodes()}\n+ Stages: {self.num_stages()}\n" \
+        return f"Scenario Tree\n+ Nodes: {self.num_nodes}\n+ Stages: {self.num_stages}\n" \
                f"+ Scenarios: {len(self.nodes_at_stage(self.num_stages()))}\n" \
                f"+ Data: {self.__data is not None}"
 
     def __repr__(self):
-        return f"Scenario tree with {self.num_nodes()} nodes, {self.num_stages()} stages " \
-               f"and {len(self.nodes_at_stage(self.num_stages()))} scenarios"
+        return f"Scenario tree with {self.num_nodes} nodes, {self.num_stages} stages " \
+               f"and {len(self.nodes_at_stage(self.num_stages))} scenarios"
 
     @staticmethod
     def __circle_coord(rad, arc):
@@ -243,6 +252,7 @@ class MarkovChainScenarioTreeFactory:
         :param num_stages: total number of stages or horizon of the scenario tree
         :param stopping_time: stopping time, which must be no larger than the number of stages [default: None]
         """
+        self.__factory_type = "MarkovChain"
         if stopping_time is None:
             stopping_time = num_stages
         else:
@@ -331,5 +341,5 @@ class MarkovChainScenarioTreeFactory:
         # check input data
         ancestors, values, stages = self.__make_ancestors_values_stages()
         probs = self.__make_probability_values(ancestors, values, stages)
-        tree = ScenarioTree(stages, ancestors, probs, values)
+        tree = ScenarioTree(stages, ancestors, probs, values, is_markovian=True)
         return tree
