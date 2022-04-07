@@ -8,6 +8,7 @@ class TestRAOCP(unittest.TestCase):
     __tree_from_markov = None
     __tree_from_iid = None
     __raocp_from_markov = None
+    __raocp_from_markov_with_markov = None
     __raocp_from_iid = None
     __good_size = 3
 
@@ -35,8 +36,11 @@ class TestRAOCP(unittest.TestCase):
 
             # construct cost weight matrices
             cost_type = "Quadratic"
+            cost_types = [cost_type] * 3
             nonleaf_state_weight = 10 * np.eye(2)  # n x n matrix
+            nonleaf_state_weights = [nonleaf_state_weight, 2 * nonleaf_state_weight, 3 * nonleaf_state_weight]
             control_weight = np.eye(2)  # u x u matrix OR scalar
+            control_weights = [control_weight, 2 * control_weight, 3 * control_weight]
             leaf_state_weight = 5 * np.eye(2)  # n x n matrix
 
             # define risks
@@ -44,8 +48,14 @@ class TestRAOCP(unittest.TestCase):
 
             # create problem
             TestRAOCP.__raocp_from_markov = core_spec.RAOCP(scenario_tree=tree) \
-                .with_markovian_dynamics(set_system, set_control) \
                 .with_all_nonleaf_costs(cost_type, nonleaf_state_weight, control_weight) \
+                .with_all_leaf_costs(cost_type, leaf_state_weight) \
+                .with_all_risks(risk_type, alpha)
+            # .with_markovian_dynamics(set_system, set_control) \
+
+            TestRAOCP.__raocp_from_markov_with_markov = core_spec.RAOCP(scenario_tree=tree) \
+                .with_markovian_dynamics(set_system, set_control) \
+                .with_markovian_costs(cost_types, nonleaf_state_weights, control_weights) \
                 .with_all_leaf_costs(cost_type, leaf_state_weight) \
                 .with_all_risks(risk_type, alpha)
 
@@ -57,16 +67,25 @@ class TestRAOCP(unittest.TestCase):
 
     def test_markovian_dynamics_list(self):
         tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov
+        raocp = TestRAOCP.__raocp_from_markov_with_markov
         self.assertTrue(raocp.list_of_dynamics[0] is None)
         for i in range(1, tree.num_nodes):
             self.assertTrue(raocp.list_of_dynamics[i] is not None)
 
-    def test_costs_list(self):
+    def test_markovian_nonleaf_costs_list(self):
+        tree = TestRAOCP.__tree_from_markov
+        raocp = TestRAOCP.__raocp_from_markov_with_markov
+        for i in range(1, tree.num_nodes):
+            self.assertTrue(raocp.list_of_nonleaf_costs[i] is not None)
+
+    def test_leaf_costs_list(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
         for i in range(tree.num_nodes):
-            self.assertTrue(raocp.list_of_costs[i] is not None)
+            if i < tree.num_nonleaf_nodes:
+                self.assertTrue(raocp.list_of_leaf_costs[i] is None)
+            else:
+                self.assertTrue(raocp.list_of_leaf_costs[i] is not None)
 
     def test_risks_list(self):
         tree = TestRAOCP.__tree_from_markov

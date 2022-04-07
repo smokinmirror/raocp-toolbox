@@ -23,7 +23,7 @@ class ScenarioTree:
     Scenario tree creation and visualisation
     """
 
-    def __init__(self, tree_factory, stages, ancestors, probability, w_values=None):
+    def __init__(self, stages, ancestors, probability, w_values=None, is_markovian=False):
         """
         :param tree_factory: tree factory used to create tree
         :param stages: integer number of total tree stages (N+1)
@@ -33,7 +33,7 @@ class ScenarioTree:
 
         Note: avoid using this constructor directly; use a factory instead
         """
-        self.__tree_factory = tree_factory
+        self.__is_markovian = is_markovian
         self.__stages = stages
         self.__ancestors = ancestors
         self.__probability = probability
@@ -70,8 +70,8 @@ class ScenarioTree:
         self.__data[node_idx] = data_dict
 
     @property
-    def tree_factory(self):
-        return self.__tree_factory
+    def is_markovian(self):
+        return self.__is_markovian
 
     @property
     def num_nonleaf_nodes(self):
@@ -341,5 +341,5 @@ class MarkovChainScenarioTreeFactory:
         # check input data
         ancestors, values, stages = self.__make_ancestors_values_stages()
         probs = self.__make_probability_values(ancestors, values, stages)
-        tree = ScenarioTree(self.__factory_type, stages, ancestors, probs, values)
+        tree = ScenarioTree(stages, ancestors, probs, values, is_markovian=True)
         return tree
