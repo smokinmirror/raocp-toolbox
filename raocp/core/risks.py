@@ -7,10 +7,10 @@ class AVaR:
     Risk item: Average Value at Risk class
     """
 
-    def __init__(self, alpha, children_probabilities):
+    def __init__(self, alpha, probabilities):
         """
         :param alpha: AVaR risk parameter
-        :param children_probabilities: probabilities of children events
+        :param probabilities: list of probabilities of future events
 
         Note: ambiguity sets of coherent risk measures can be expressed by conic inequalities,
                 defined by a tuple (E, F, cone, b)
@@ -19,8 +19,8 @@ class AVaR:
             self.__alpha = alpha
         else:
             raise ValueError("alpha value '%d' not supported" % alpha)
-        self.__num_children = len(children_probabilities)
-        self.__children_probabilities = np.asarray(children_probabilities).reshape(self.__num_children, 1)
+        self.__num_children = len(probabilities)
+        self.__children_probabilities = np.asarray(probabilities).reshape(self.__num_children, 1)
 
         self.__matrix_e = None  # coefficient matrix of mu
         self.__matrix_f = None  # coefficient matrix of nu

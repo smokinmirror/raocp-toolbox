@@ -65,3 +65,7 @@ class TestCosts(unittest.TestCase):
         # check error raised
         with self.assertRaises(ValueError):
             TestCosts.__QuadraticLeaf.get_cost_value(state)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -45,7 +45,8 @@ class TestRAOCP(unittest.TestCase):
             # create problem
             TestRAOCP.__raocp_from_markov = core_spec.RAOCP(scenario_tree=tree) \
                 .with_markovian_dynamics(set_system, set_control) \
-                .with_all_costs(cost_type, nonleaf_state_weight, control_weight, leaf_state_weight) \
+                .with_all_nonleaf_costs(cost_type, nonleaf_state_weight, control_weight) \
+                .with_all_leaf_costs(cost_type, leaf_state_weight) \
                 .with_all_risks(risk_type, alpha)
 
     @classmethod
@@ -54,31 +55,24 @@ class TestRAOCP(unittest.TestCase):
         TestRAOCP.__construct_tree_from_markov()
         TestRAOCP.__construct_raocp_from_markov()
 
-    def test_markovian_system_dynamics_list(self):
+    def test_markovian_dynamics_list(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
-        self.assertTrue(raocp.list_of_system_dynamics[0] is None)
+        self.assertTrue(raocp.list_of_dynamics[0] is None)
         for i in range(1, tree.num_nodes):
-            self.assertTrue(raocp.list_of_system_dynamics[i] is not None)
+            self.assertTrue(raocp.list_of_dynamics[i] is not None)
 
-    def test_markovian_control_dynamics_list(self):
-        tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov
-        self.assertTrue(raocp.list_of_control_dynamics[0] is None)
-        for i in range(1, tree.num_nodes):
-            self.assertTrue(raocp.list_of_control_dynamics[i] is not None)
-
-    def test_cost_items_list(self):
+    def test_costs_list(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
         for i in range(tree.num_nodes):
-            self.assertTrue(raocp.list_of_cost_items[i] is not None)
+            self.assertTrue(raocp.list_of_costs[i] is not None)
 
-    def test_risk_items_list(self):
+    def test_risks_list(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
         for i in range(tree.num_nonleaf_nodes):
-            self.assertTrue(raocp.list_of_risk_items[i] is not None)
+            self.assertTrue(raocp.list_of_risks[i] is not None)
 
     def test_markovian_system_dynamics_failure(self):
         tree = TestRAOCP.__tree_from_markov
@@ -119,66 +113,6 @@ class TestRAOCP(unittest.TestCase):
         # construct problem with error catch
         with self.assertRaises(ValueError):
             _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
-
-    def test_cost_items_nonleaf_state_failure(self):
-        tree = TestRAOCP.__tree_from_markov
-        cost_type = "Quadratic"
-
-        # construct bad nonleaf state weights
-        state_weights = np.eye(TestRAOCP.__good_size + 1)
-
-        # construct good control and terminal state weights
-        control_weights = np.ones((TestRAOCP.__good_size, 1))
-        terminal_state_weights = np.eye(TestRAOCP.__good_size)
-
-        # construct problem with error catch
-        with self.assertRaises(ValueError):
-            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
-
-    def test_cost_items_control_failure(self):
-        tree = TestRAOCP.__tree_from_markov
-        cost_type = "Quadratic"
-
-        # construct bad control weights
-        control_weights = np.ones((TestRAOCP.__good_size + 1, 1))
-
-        # construct good control and terminal state weights
-        state_weights = np.eye(TestRAOCP.__good_size)
-        terminal_state_weights = np.eye(TestRAOCP.__good_size)
-
-        # construct problem with error catch
-        with self.assertRaises(ValueError):
-            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
-
-    def test_cost_items_leaf_state_failure(self):
-        tree = TestRAOCP.__tree_from_markov
-        cost_type = "Quadratic"
-
-        # construct bad leaf state weights
-        terminal_state_weights = np.eye(TestRAOCP.__good_size + 1)
-
-        # construct good control and state weights
-        control_weights = np.ones((TestRAOCP.__good_size, 1))
-        state_weights = np.eye(TestRAOCP.__good_size)
-
-        # construct problem with error catch
-        with self.assertRaises(ValueError):
-            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
-
-    def test_cost_items_states_failure(self):
-        tree = TestRAOCP.__tree_from_markov
-        cost_type = "Quadratic"
-
-        # construct medium bad nonleaf and leaf state weights (same # of columns, different # of rows)
-        state_weights = np.ones((TestRAOCP.__good_size, TestRAOCP.__good_size))
-        terminal_state_weights = np.ones((TestRAOCP.__good_size + 1, TestRAOCP.__good_size))
-
-        # construct good control weights
-        control_weights = np.ones((TestRAOCP.__good_size, 1))
-
-        # construct problem with error catch
-        with self.assertRaises(ValueError):
-            _ = core_spec.RAOCP(tree).with_all_costs(cost_type, state_weights, control_weights, terminal_state_weights)
 
 
 if __name__ == '__main__':
