@@ -99,7 +99,25 @@ class Cache:
         use dynamic programming to project (x, u) onto the set S_1
         :returns: nothing
         """
-        pass
+        for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
+            self.__q[i] = - 2*self.__q[i]
+
+        for i in reversed(range(self.__raocp.tree.num_nonleaf_nodes)):
+            sum_for_d = 0
+            for j in self.__raocp.tree.children_of(i):
+                sum_for_d += self.__raocp.control_dynamics_at_node(j).T @ self.__q[i]
+
+            self.__d[i] = self.__inverse_of_modified_control_dynamics[i] @ \
+                (self.__controls[i] - sum_for_d)
+            sum_for_q = 0
+            for j in self.__raocp.tree.children_of(i):
+                sum_for_q += self.__sum_of_dynamics[j].T @ (self.__P[j] @ self.__B[j] @ self.__d[i] + self.__q[j])
+
+            self.__q[i] = - self.__states[i] + self.__K[i].T @ (self.__d[i] - self.__controls[i]) + sum_for_q
+
+        # self.__states[0] = self.__states[0]
+        for i in range(self.__raocp.tree.num_nodes):
+            pass
 
     def project_on_s2(self):
         """
@@ -138,7 +156,7 @@ class Cache:
     def operator_ell_adjoint(self):
         pass
 
-    # prox_g* ----------------------------------------------------------------------------------------------------------
+    # proximal of g conjugate ------------------------------------------------------------------------------------------
 
     def moreau_decomposition(self):
         pass
