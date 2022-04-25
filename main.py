@@ -48,3 +48,4 @@ problem = r.core.RAOCP(scenario_tree=tree)\
 
 x0 = np.array([[2], [1]])
 cache = r.core.Cache(problem_spec=problem)
+cache.project_on_s2()

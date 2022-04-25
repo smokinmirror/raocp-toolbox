@@ -12,34 +12,37 @@ class Cache:
         self.__raocp = problem_spec
         self.__initial_state = None
         self.__state_size = self.__raocp.state_dynamics_at_node(1).shape[1]
-        self.__input_size = self.__raocp.control_dynamics_at_node(1).shape[1]
-        # primal
-        self.__x = [np.empty(0) * self.__raocp.tree.num_nodes]
-        self.__u = [np.empty(0) * self.__raocp.tree.num_nonleaf_nodes]
-        self.__y = [np.empty(0) * self.__raocp.tree.num_nodes - 1, None]
-        self.__s = [None, np.empty(0) * self.__raocp.tree.num_nodes - 1]
-        self.__t = [None, np.empty(0) * self.__raocp.tree.num_nodes - 1]
-        self.__num_prim_parts = 5
-        # dual
-        self.__w1 = []
-        self.__w2 = []
-        self.__w3 = []
-        self.__w4 = []
-        self.__w5 = []
-        self.__w6 = []
-        self.__w7 = []
-        self.__w8 = []
-        self.__w9 = []
+        self.__control_size = self.__raocp.control_dynamics_at_node(1).shape[1]
+        # Chambolle-Pock primal
+        self.__states = [np.zeros(0)] * self.__raocp.tree.num_nodes  # x
+        self.__controls = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes  # u
+        self.__dual_risk_variable_y = [np.zeros(0)] * (self.__raocp.tree.num_nodes - 1) + [None]  # y
+        self.__epigraphical_relaxation_variable_s = [None] + [np.zeros(0)] * (self.__raocp.tree.num_nodes - 1)  # s
+        self.__epigraphical_relaxation_variable_t = [None] + [np.zeros(0)] * (self.__raocp.tree.num_nodes - 1)  # tau
+        self.__num_primal_parts = 5
+        # Chambolle-Pock dual
+        self.__dual_part_1_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_2_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_3_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_4_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_5_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_6_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_7_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
+            + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
+        self.__dual_part_8_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
+            + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
+        self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
+            + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
         self.__num_dual_parts = 9
         # S1 projection
-        self.__P = [np.empty((0, 0))] * self.__raocp.tree.num_nodes
-        self.__q = [np.empty(0)] * self.__raocp.tree.num_nodes
-        self.__K = [np.empty((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
-        self.__d = [np.empty(0)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__Bhat_inv = [np.empty((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
-        self.__AplusBK = [np.empty((0, 0))] * self.__raocp.tree.num_nodes
+        self.__P = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes
+        self.__q = [np.zeros(0)] * self.__raocp.tree.num_nodes
+        self.__K = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
+        self.__d = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
+        self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes
         # S2 projection
-        self.__null = [np.empty((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
+        self.__pseudoinverse_of_null = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
         # populate arrays
         self.__offline()
 
@@ -55,27 +58,28 @@ class Cache:
             self.__P[i] = np.eye(self.__state_size)
 
         state_eye = np.eye(self.__state_size)
-        input_eye = np.eye(self.__input_size)
+        input_eye = np.eye(self.__control_size)
         for i in reversed(range(self.__raocp.tree.num_nonleaf_nodes)):
-            sum_B = 0
-            sum_K = 0
+            sum_for_modified_control_dynamics = 0
+            sum_for_K = 0
             for j in self.__raocp.tree.children_of(i):
-                sum_B += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
-                         @ self.__raocp.control_dynamics_at_node(j)
-                sum_K += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
-                         @ self.__raocp.state_dynamics_at_node(j)
+                sum_for_modified_control_dynamics += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
+                    @ self.__raocp.control_dynamics_at_node(j)
+                sum_for_K += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
+                    @ self.__raocp.state_dynamics_at_node(j)
 
-            Bhat_chol = np.linalg.cholesky(input_eye + sum_B)
-            Bhat_chol_inv = np.linalg.inv(Bhat_chol)
-            self.__Bhat_inv[i] = Bhat_chol_inv.T @ Bhat_chol_inv
-            self.__K[i] = - self.__Bhat_inv[i] @ sum_K  # not correct
-            sum_P = 0
+            choleskey_of_modified_control_dynamics = np.linalg.cholesky(input_eye + sum_for_modified_control_dynamics)
+            inverse_of_choleskey_of_modified_control_dynamics = np.linalg.inv(choleskey_of_modified_control_dynamics)
+            self.__inverse_of_modified_control_dynamics[i] = inverse_of_choleskey_of_modified_control_dynamics.T \
+                @ inverse_of_choleskey_of_modified_control_dynamics
+            self.__K[i] = - self.__inverse_of_modified_control_dynamics[i] @ sum_for_K  # not correct
+            sum_for_P = 0
             for j in self.__raocp.tree.children_of(i):
-                self.__AplusBK[j] = self.__raocp.state_dynamics_at_node(j) \
+                self.__sum_of_dynamics[j] = self.__raocp.state_dynamics_at_node(j) \
                                     + self.__raocp.control_dynamics_at_node(j) @ self.__K[i]
-                sum_P += self.__AplusBK[j].T @ self.__P[j] @ self.__AplusBK[j]
+                sum_for_P += self.__sum_of_dynamics[j].T @ self.__P[j] @ self.__sum_of_dynamics[j]
 
-            self.__P[i] = state_eye + self.__K[i].T @ self.__K[i] + sum_P
+            self.__P[i] = state_eye + self.__K[i].T @ self.__K[i] + sum_for_P
 
         # S2 projection
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
@@ -84,11 +88,11 @@ class Cache:
             row1 = np.hstack((self.__raocp.risk_at_node(i).matrix_e.T, -eye, -eye))
             row2 = np.hstack((self.__raocp.risk_at_node(i).matrix_f.T, zeros, zeros))
             kernel = np.vstack((row1, row2))
-            self.__null[i] = scipy.linalg.null_space(kernel)
+            self.__pseudoinverse_of_null[i] = np.linalg.pinv(scipy.linalg.null_space(kernel))
 
     # ONLINE ###########################################################################################################
 
-    # prox_f -----------------------------------------------------------------------------------------------------------
+    # proximal of f ----------------------------------------------------------------------------------------------------
 
     def project_on_s1(self):
         """
@@ -103,27 +107,35 @@ class Cache:
         :returns: nothing
         """
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
-            children = self.__raocp.tree.children_of(i)
-            # vector = np.vstack((self.__z_prim[i, self.__y],
-            #                     self.__z_prim[children, self.__s],
-            #                     self.__z_prim[children, self.__t]))
-            # proj_z2 = self.__null[i] @ np.linalg.lstsq(null, vector, rcond=None)[0]
-            # self.__z_prim_update[i, self.__y] = np.array(proj_z2[0:2 * children + 1])
-            # self.__z_prim_update[children, self.__s] = np.array(proj_z2[2 * children + 1:3 * children + 1])
-            # self.__z_prim_update[children, self.__t] = np.array(proj_z2[3 * children + 1:4 * children + 1])
+            children_at_i = self.__raocp.tree.children_of(i)
+            s_stack = self.__epigraphical_relaxation_variable_s[children_at_i[0]]
+            t_stack = self.__epigraphical_relaxation_variable_t[children_at_i[0]]
+            if children_at_i.size > 1:
+                for j in np.delete(children_at_i, 0):
+                    s_stack = np.vstack((s_stack, self.__epigraphical_relaxation_variable_s[j]))
+                    t_stack = np.vstack((t_stack, self.__epigraphical_relaxation_variable_t[j]))
 
-    def proximal_f(self):
+            full_stack = np.vstack((self.__dual_risk_variable_y[i], s_stack, t_stack))
+            projection = self.__pseudoinverse_of_null[i] @ full_stack
+            self.__dual_risk_variable_y[i] = projection[0:self.__dual_risk_variable_y.size]
+            for k in range(children_at_i.size):
+                self.__epigraphical_relaxation_variable_s[children_at_i[k]] = \
+                    projection[self.__dual_risk_variable_y.size + k]
+                self.__epigraphical_relaxation_variable_t[children_at_i[k]] = \
+                    projection[self.__dual_risk_variable_y.size + children_at_i.size + k]
+
+    def proximal_of_f(self):
         # s0 ?
         self.project_on_s1()
         self.project_on_s2()
-        return "prox_f complete"
+        return "proximal of f complete"
 
-    # L / L* -----------------------------------------------------------------------------------------------------------
+    # operator L and its adjoint ---------------------------------------------------------------------------------------
 
-    def L(self, z):
+    def operator_ell(self, z):
         pass
 
-    def L_adjoint(self):
+    def operator_ell_adjoint(self):
         pass
 
     # prox_g* ----------------------------------------------------------------------------------------------------------
@@ -137,19 +149,19 @@ class Cache:
     def add_c(self):
         pass
 
-    def sub_c(self):
+    def subtract_c(self):
         pass
 
     def projection_on_cones(self):
         pass
 
-    def prox_g_ast(self):
+    def proximal_of_g_conjugate(self):
         pass
 
     # CHAMBOLLE POCK ###################################################################################################
 
     def chock(self, initial_state):
         """
-        run the chambolle-pock algorithm
+        run the Chambolle-Pock algorithm
         """
         self.__initial_state = initial_state
