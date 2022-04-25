@@ -201,12 +201,6 @@ class Cache:
 
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
-    def moreau_decomposition(self):
-        pass
-
-    def precomposition(self):
-        pass
-
     def add_halves(self):
         self.__dual_part_5_nonleaf -= 0.5
         self.__dual_part_6_nonleaf += 0.5
@@ -219,10 +213,9 @@ class Cache:
         self.__dual_part_8_leaf += 0.5
         self.__dual_part_9_leaf -= 0.5
 
-    def projection_on_cones(self):
-        pass
-
     def proximal_of_g_conjugate(self):
+        # moreau_decomposition
+        # precomposition
         pass
 
     # CHAMBOLLE POCK ###################################################################################################
