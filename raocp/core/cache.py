@@ -14,11 +14,11 @@ class Cache:
         self.__state_size = self.__raocp.state_dynamics_at_node(1).shape[1]
         self.__control_size = self.__raocp.control_dynamics_at_node(1).shape[1]
         # Chambolle-Pock primal
-        self.__states = [np.zeros((self.__state_size, 0))] * self.__raocp.tree.num_nodes  # x
-        self.__controls = [np.zeros((self.__control_size, 0))] * self.__raocp.tree.num_nonleaf_nodes  # u
+        self.__states = [np.zeros((self.__state_size, 1))] * self.__raocp.tree.num_nodes  # x
+        self.__controls = [np.zeros((self.__control_size, 1))] * self.__raocp.tree.num_nonleaf_nodes  # u
         self.__dual_risk_variable_y = [None] * self.__raocp.tree.num_nonleaf_nodes  # y
-        self.__epigraphical_relaxation_variable_s = [np.zeros(0)] * self.__raocp.tree.num_nodes  # s
-        self.__epigraphical_relaxation_variable_t = [None] + [np.zeros(0)] * (self.__raocp.tree.num_nodes - 1)  # tau
+        self.__epigraphical_relaxation_variable_s = [None] * (self.__raocp.tree.num_stages + 1)  # s
+        self.__epigraphical_relaxation_variable_tau = [None] * (self.__raocp.tree.num_stages + 1)  # tau
         self.__num_primal_parts = 5
         # Chambolle-Pock dual
         self.__dual_part_1_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
@@ -40,9 +40,9 @@ class Cache:
         self.__K = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
         self.__d = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
         self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
-        self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes
+        self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes  # A+BK
         # S2 projection
-        self.__pseudoinverse_of_null = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
+        self.__s2_projection_operator = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
         # populate arrays
         self.__offline()
 
@@ -52,10 +52,18 @@ class Cache:
         """
         Upon creation of Cache class, populate pre-computable arrays
         """
+        # variables size initialisation
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
-            self.__dual_risk_variable_y[i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 0))
+            self.__dual_risk_variable_y[i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
 
-        # S1 projection
+        for i in range(self.__raocp.tree.num_stages + 1):
+            largest_node_at_stage = max(self.__raocp.tree.nodes_at_stage(i))
+            # store variables in their node number inside the stage vector for s and tau
+            self.__epigraphical_relaxation_variable_s[i] = np.zeros((largest_node_at_stage + 1, 1))
+            if i > 0:
+                self.__epigraphical_relaxation_variable_tau[i] = np.zeros((largest_node_at_stage + 1, 1))
+
+        # S1 projection offline
         for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
             self.__P[i] = np.eye(self.__state_size)
 
@@ -83,14 +91,16 @@ class Cache:
 
             self.__P[i] = state_eye + self.__K[i].T @ self.__K[i] + sum_for_P
 
-        # S2 projection
+        # S2 projection offline
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
             eye = np.eye(len(self.__raocp.tree.children_of(i)))
             zeros = np.zeros((self.__raocp.risk_at_node(i).matrix_f.shape[1], eye.shape[0]))
             row1 = np.hstack((self.__raocp.risk_at_node(i).matrix_e.T, -eye, -eye))
             row2 = np.hstack((self.__raocp.risk_at_node(i).matrix_f.T, zeros, zeros))
-            kernel = np.vstack((row1, row2))
-            self.__pseudoinverse_of_null[i] = np.linalg.pinv(scipy.linalg.null_space(kernel))
+            s2_space = np.vstack((row1, row2))
+            kernel = scipy.linalg.null_space(s2_space)
+            pseudoinverse_of_kernel = np.linalg.pinv(kernel)
+            self.__s2_projection_operator[i] = kernel @ pseudoinverse_of_kernel
 
     # ONLINE ###########################################################################################################
 
@@ -127,26 +137,30 @@ class Cache:
 
     def project_on_s2(self):
         """
-        use kernels to project (y, s, t) onto the set S_2
+        use kernels to project (y, s, tau) onto the set S_2
         :returns: nothing
         """
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
-            children_at_i = self.__raocp.tree.children_of(i)
-            s_stack = self.__epigraphical_relaxation_variable_s[children_at_i[0]]
-            t_stack = self.__epigraphical_relaxation_variable_t[children_at_i[0]]
-            if children_at_i.size > 1:
-                for j in np.delete(children_at_i, 0):
-                    s_stack = np.vstack((s_stack, self.__epigraphical_relaxation_variable_s[j]))
-                    t_stack = np.vstack((t_stack, self.__epigraphical_relaxation_variable_t[j]))
+            stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
+            children_of_i = self.__raocp.tree.children_of(i)
+            # get children of i out of next stage of s and tau
+            s_stack = self.__epigraphical_relaxation_variable_s[stage_at_children_of_i][children_of_i[0]]
+            tau_stack = self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][children_of_i[0]]
+            if children_of_i.size > 1:
+                for j in np.delete(children_of_i, 0):
+                    s_stack = np.vstack((s_stack,
+                                         self.__epigraphical_relaxation_variable_s[stage_at_children_of_i][j]))
+                    tau_stack = np.vstack((tau_stack,
+                                           self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j]))
 
-            full_stack = np.vstack((self.__dual_risk_variable_y[i], s_stack, t_stack))
-            projection = self.__pseudoinverse_of_null[i] @ full_stack
+            full_stack = np.vstack((self.__dual_risk_variable_y[i], s_stack, tau_stack))
+            projection = self.__s2_projection_operator[i] @ full_stack
             self.__dual_risk_variable_y[i] = projection[0:self.__dual_risk_variable_y[i].size]
-            for k in range(children_at_i.size):
-                self.__epigraphical_relaxation_variable_s[children_at_i[k]] = \
+            for k in range(children_of_i.size):
+                self.__epigraphical_relaxation_variable_s[stage_at_children_of_i][children_of_i[k]] = \
                     projection[self.__dual_risk_variable_y[i].size + k]
-                self.__epigraphical_relaxation_variable_t[children_at_i[k]] = \
-                    projection[self.__dual_risk_variable_y[i].size + children_at_i.size + k]
+                self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][children_of_i[k]] = \
+                    projection[self.__dual_risk_variable_y[i].size + children_of_i.size + k]
 
     def proximal_of_f(self):
         # s0 ?
@@ -166,10 +180,10 @@ class Cache:
             self.__dual_part_4_nonleaf[i] = np.linalg.sqrtm(self.__raocp.nonleaf_cost_at_node(i).control_weights) \
                 @ self.__controls[i]
             children_at_i = self.__raocp.tree.children_of(i)
-            t_stack = self.__epigraphical_relaxation_variable_t[children_at_i[0]]
+            t_stack = self.__epigraphical_relaxation_variable_tau[children_at_i[0]]
             if children_at_i.size > 1:
                 for j in np.delete(children_at_i, 0):
-                    t_stack = np.vstack((t_stack, self.__epigraphical_relaxation_variable_t[j]))
+                    t_stack = np.vstack((t_stack, self.__epigraphical_relaxation_variable_tau[j]))
             self.__dual_part_5_nonleaf[i] = 0.5 * t_stack
             self.__dual_part_6_nonleaf[i] = 0.5 * t_stack
 
@@ -191,7 +205,7 @@ class Cache:
             children_at_i = self.__raocp.tree.children_of(i)
             t_stack = 0.5 * (self.__dual_part_5_nonleaf[i] + self.__dual_part_6_nonleaf[i])
             for j in range(children_at_i.size):
-                self.__epigraphical_relaxation_variable_t[children_at_i[j]] = t_stack[j]
+                self.__epigraphical_relaxation_variable_tau[children_at_i[j]] = t_stack[j]
 
         for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
             self.__states[i] = np.linalg.sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights).T \
