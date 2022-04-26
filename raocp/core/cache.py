@@ -10,9 +10,10 @@ class Cache:
 
     def __init__(self, problem_spec: ps.RAOCP):
         self.__raocp = problem_spec
-        self.__initial_state = None
         self.__state_size = self.__raocp.state_dynamics_at_node(1).shape[1]
         self.__control_size = self.__raocp.control_dynamics_at_node(1).shape[1]
+        # Chambolle-Pock
+        self.__gamma = None
         # Chambolle-Pock primal
         self.__states = [np.zeros((self.__state_size, 1))] * self.__raocp.tree.num_nodes  # x
         self.__controls = [np.zeros((self.__control_size, 1))] * self.__raocp.tree.num_nonleaf_nodes  # u
@@ -238,8 +239,98 @@ class Cache:
 
     # CHAMBOLLE-POCK ###################################################################################################
 
-    def chock(self, initial_state):
+    def x_bar(self, copy_x, copy_u, copy_y, copy_s, copy_t):
+        # operate L transpose on dual parts
+        self.operator_ell_adjoint()
+        # old primal parts minus (gamma times new primal parts)
+        self.__states = copy_x - self.__gamma * self.__states
+        self.__controls = copy_u - self.__gamma * self.__controls
+        self.__dual_risk_variable_y = copy_y - self.__gamma * self.__dual_risk_variable_y
+        self.__epigraphical_relaxation_variable_s = copy_s - \
+            self.__gamma * self.__epigraphical_relaxation_variable_s
+        self.__epigraphical_relaxation_variable_tau = copy_t - \
+            self.__gamma * self.__epigraphical_relaxation_variable_tau
+
+    def x_new(self):
+        self.proximal_of_f()
+
+    def y_bar(self, copy_x, copy_u, copy_y, copy_s, copy_t,
+              copy_w1, copy_w2, copy_w3, copy_w4, copy_w5, copy_w6, copy_w7, copy_w8, copy_w9):
+        # modify primal parts
+        self.__states = 2 * self.__states - copy_x
+        self.__controls = 2 * self.__controls - copy_u
+        self.__dual_risk_variable_y = 2 * self.__dual_risk_variable_y - copy_y
+        self.__epigraphical_relaxation_variable_s = 2 * self.__epigraphical_relaxation_variable_s - copy_s
+        self.__epigraphical_relaxation_variable_tau = 2 * self.__epigraphical_relaxation_variable_tau - copy_t
+        # operate L on primal parts
+        self.operator_ell()
+        # old dual parts plus (gamma times new dual parts)
+        self.__dual_part_1_nonleaf = copy_w1 + self.__gamma * self.__dual_part_1_nonleaf
+        self.__dual_part_2_nonleaf = copy_w2 + self.__gamma * self.__dual_part_2_nonleaf
+        self.__dual_part_3_nonleaf = copy_w3 + self.__gamma * self.__dual_part_3_nonleaf
+        self.__dual_part_4_nonleaf = copy_w4 + self.__gamma * self.__dual_part_4_nonleaf
+        self.__dual_part_5_nonleaf = copy_w5 + self.__gamma * self.__dual_part_5_nonleaf
+        self.__dual_part_6_nonleaf = copy_w6 + self.__gamma * self.__dual_part_6_nonleaf
+        self.__dual_part_7_leaf = copy_w7 + self.__gamma * self.__dual_part_7_leaf
+        self.__dual_part_8_leaf = copy_w8 + self.__gamma * self.__dual_part_8_leaf
+        self.__dual_part_9_leaf = copy_w9 + self.__gamma * self.__dual_part_9_leaf
+
+    def y_new(self):
+        self.proximal_of_g_conjugate()
+
+    def chock(self, initial_state, gamma, tolerance=1e-5):
         """
-        run the Chambolle-Pock algorithm
+        Chambolle-Pock algorithm
         """
-        self.__initial_state = initial_state
+        self.__states[0] = initial_state
+        self.__gamma = gamma
+        # primal cache
+        states_cache = []
+        controls_cache = []
+        e_cache = []
+        keep_running = True
+        while keep_running:
+            # create copy of parts
+            copy_x = self.__states.copy()
+            copy_u = self.__controls.copy()
+            copy_y = self.__dual_risk_variable_y.copy()
+            copy_s = self.__epigraphical_relaxation_variable_s.copy()
+            copy_t = self.__epigraphical_relaxation_variable_tau.copy()
+            copy_w1 = self.__dual_part_1_nonleaf.copy()
+            copy_w2 = self.__dual_part_2_nonleaf.copy()
+            copy_w3 = self.__dual_part_3_nonleaf.copy()
+            copy_w4 = self.__dual_part_4_nonleaf.copy()
+            copy_w5 = self.__dual_part_5_nonleaf.copy()
+            copy_w6 = self.__dual_part_6_nonleaf.copy()
+            copy_w7 = self.__dual_part_7_leaf.copy()
+            copy_w8 = self.__dual_part_8_leaf.copy()
+            copy_w9 = self.__dual_part_9_leaf.copy()
+            # run primal part of algorithm
+            self.x_bar(copy_x, copy_u, copy_y, copy_s, copy_t)
+            self.x_new()
+            # create backup copy of primal parts
+            new_copy_x = self.__states.copy()
+            new_copy_u = self.__controls.copy()
+            new_copy_y = self.__dual_risk_variable_y.copy()
+            new_copy_s = self.__epigraphical_relaxation_variable_s.copy()
+            new_copy_t = self.__epigraphical_relaxation_variable_tau.copy()
+            # run dual part of algorithm
+            self.y_bar(copy_x, copy_u, copy_y, copy_s, copy_t,
+                       copy_w1, copy_w2, copy_w3, copy_w4, copy_w5, copy_w6, copy_w7, copy_w8, copy_w9)
+            self.y_new()
+            # restore backup copy of primal parts
+            self.__states = new_copy_x
+            self.__controls = new_copy_u
+            self.__dual_risk_variable_y = new_copy_y
+            self.__epigraphical_relaxation_variable_s = new_copy_s
+            self.__epigraphical_relaxation_variable_tau = new_copy_t
+            # add to cache
+            states_cache.append(self.__states)
+            controls_cache.append(self.__controls)
+            # calculate error
+            current_error = np.linalg.norm(states_cache[-1] - states_cache[-2], np.inf)
+            e_cache.append(current_error)
+            # check stopping criteria
+            stopping_criteria = current_error < tolerance
+            if stopping_criteria:
+                keep_running = False
