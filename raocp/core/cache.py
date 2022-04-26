@@ -19,7 +19,6 @@ class Cache:
         self.__dual_risk_variable_y = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes  # y
         self.__epigraphical_relaxation_variable_s = [np.zeros(0)] * (self.__raocp.tree.num_stages + 1)  # s
         self.__epigraphical_relaxation_variable_tau = [None] + [np.zeros(0)] * self.__raocp.tree.num_stages  # tau
-        self.__num_primal_parts = 5
         # Chambolle-Pock dual
         self.__dual_part_1_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
         self.__dual_part_2_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
@@ -33,7 +32,6 @@ class Cache:
             + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
         self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
             + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
-        self.__num_dual_parts = 9
         # S1 projection
         self.__P = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes
         self.__q = [np.zeros(0)] * self.__raocp.tree.num_nodes
@@ -68,7 +66,7 @@ class Cache:
             self.__P[i] = np.eye(self.__state_size)
 
         state_eye = np.eye(self.__state_size)
-        input_eye = np.eye(self.__control_size)
+        control_eye = np.eye(self.__control_size)
         for i in reversed(range(self.__raocp.tree.num_nonleaf_nodes)):
             sum_for_modified_control_dynamics = 0
             sum_for_K = 0
@@ -78,7 +76,7 @@ class Cache:
                 sum_for_K += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
                     @ self.__raocp.state_dynamics_at_node(j)
 
-            choleskey_of_modified_control_dynamics = np.linalg.cholesky(input_eye + sum_for_modified_control_dynamics)
+            choleskey_of_modified_control_dynamics = np.linalg.cholesky(control_eye + sum_for_modified_control_dynamics)
             inverse_of_choleskey_of_modified_control_dynamics = np.linalg.inv(choleskey_of_modified_control_dynamics)
             self.__inverse_of_modified_control_dynamics[i] = inverse_of_choleskey_of_modified_control_dynamics.T \
                 @ inverse_of_choleskey_of_modified_control_dynamics
