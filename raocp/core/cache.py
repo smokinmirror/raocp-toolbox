@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.optimize
+from scipy.linalg import sqrtm
 import raocp.core.problem_spec as ps
 
 
@@ -21,21 +22,22 @@ class Cache:
         self.__epigraphical_relaxation_variable_s = [np.zeros(0)] * (self.__raocp.tree.num_stages + 1)  # s
         self.__epigraphical_relaxation_variable_tau = [None] + [np.zeros(0)] * self.__raocp.tree.num_stages  # tau
         # Chambolle-Pock dual
-        self.__dual_part_1_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__dual_part_2_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__dual_part_3_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__dual_part_4_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__dual_part_5_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__dual_part_6_nonleaf = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_1_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nonleaf_nodes
+        self.__dual_part_2_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nonleaf_nodes
+        # dual parts 3,4,5,6 stored in child nodes for convenience
+        self.__dual_part_3_nonleaf = [np.zeros((self.__state_size, 1))] * self.__raocp.tree.num_nodes
+        self.__dual_part_4_nonleaf = [np.zeros((self.__control_size, 1))] * self.__raocp.tree.num_nodes
+        self.__dual_part_5_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nodes
+        self.__dual_part_6_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nodes
         self.__dual_part_7_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
+            + [np.zeros((self.__state_size, 1))] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
         self.__dual_part_8_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
+            + [np.zeros(1)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
         self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [np.zeros(0)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
+            + [np.zeros(1)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
         # S1 projection
-        self.__P = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes
-        self.__q = [np.zeros(0)] * self.__raocp.tree.num_nodes
+        self.__P = [np.zeros((self.__state_size, self.__state_size))] * self.__raocp.tree.num_nodes
+        self.__q = [np.zeros((self.__state_size, 1))] * self.__raocp.tree.num_nodes
         self.__K = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
         self.__d = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
         self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
@@ -172,67 +174,68 @@ class Cache:
     def operator_ell(self):
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
+            stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
+            children_of_i = self.__raocp.tree.children_of(i)
             self.__dual_part_1_nonleaf[i] = self.__dual_risk_variable_y[i]
             self.__dual_part_2_nonleaf[i] = self.__epigraphical_relaxation_variable_s[stage_at_i][i] \
                 - self.__raocp.risk_at_node(i).vector_b.T @ self.__dual_risk_variable_y[i]
-            self.__dual_part_3_nonleaf[i] = np.linalg.sqrtm(
-                self.__raocp.nonleaf_cost_at_node(i).nonleaf_state_weights) @ self.__states[i]
-            self.__dual_part_4_nonleaf[i] = np.linalg.sqrtm(self.__raocp.nonleaf_cost_at_node(i).control_weights) \
-                @ self.__controls[i]
-            stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
-            children_of_i = self.__raocp.tree.children_of(i)
-            t_stack = self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][children_of_i[0]]
-            if children_of_i.size > 1:
-                for j in np.delete(children_of_i, 0):
-                    t_stack = np.vstack((t_stack,
-                                         self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j]))
-            self.__dual_part_5_nonleaf[i] = 0.5 * t_stack
-            self.__dual_part_6_nonleaf[i] = 0.5 * t_stack
+            for j in children_of_i:
+                self.__dual_part_3_nonleaf[j] = sqrtm(
+                    self.__raocp.nonleaf_cost_at_node(j).nonleaf_state_weights) @ self.__states[i]
+                self.__dual_part_4_nonleaf[j] = sqrtm(
+                    self.__raocp.nonleaf_cost_at_node(j).control_weights) @ self.__controls[i]
+                tau = self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j]
+                self.__dual_part_5_nonleaf[j] = 0.5 * tau
+                self.__dual_part_6_nonleaf[j] = 0.5 * tau
 
         for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
-            self.__dual_part_7_leaf[i] = np.linalg.sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights) \
-                                         @ self.__states[i]
-            self.__dual_part_8_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_children_of_i][i]
-            self.__dual_part_9_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_children_of_i][i]
+            stage_at_i = self.__raocp.tree.stage_of(i)
+            self.__dual_part_7_leaf[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights) \
+                @ self.__states[i]
+            self.__dual_part_8_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_i][i]
+            self.__dual_part_9_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_i][i]
 
     def operator_ell_adjoint(self):
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
-            self.__dual_risk_variable_y[i] = self.__dual_part_1_nonleaf[i] - \
-                self.__raocp.risk_at_node(i).vector_b @ self.__dual_part_2_nonleaf[i]
-            self.__epigraphical_relaxation_variable_s[stage_at_i][i] = self.__dual_part_2_nonleaf[i]
-            self.__states[i] = np.linalg.sqrtm(self.__raocp.nonleaf_cost_at_node(i).nonleaf_state_weights).T \
-                @ self.__dual_part_3_nonleaf[i]
-            self.__controls[i] = np.linalg.sqrtm(self.__raocp.nonleaf_cost_at_node(i).control_weights).T \
-                @ self.__dual_part_4_nonleaf[i]
             stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
             children_of_i = self.__raocp.tree.children_of(i)
-            t_stack = 0.5 * (self.__dual_part_5_nonleaf[i] + self.__dual_part_6_nonleaf[i])
-            for j in range(children_of_i.size):
-                self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][children_of_i[j]] = t_stack[j]
+            self.__dual_risk_variable_y[i] = (self.__dual_part_1_nonleaf[i]
+                                              - self.__raocp.risk_at_node(i).vector_b
+                                              @ self.__dual_part_2_nonleaf[i])[..., None]  # reshape to column vector
+            self.__epigraphical_relaxation_variable_s[stage_at_i][i] = self.__dual_part_2_nonleaf[i]
+            self.__states[i] = 0
+            self.__controls[i] = 0
+            for j in children_of_i:
+                self.__states[i] += sqrtm(self.__raocp.nonleaf_cost_at_node(j).nonleaf_state_weights).T \
+                    @ self.__dual_part_3_nonleaf[j]
+                self.__controls[i] += sqrtm(self.__raocp.nonleaf_cost_at_node(j).control_weights).T \
+                    @ self.__dual_part_4_nonleaf[j]
+                self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j] = 0.5 \
+                    * (self.__dual_part_5_nonleaf[j] + self.__dual_part_6_nonleaf[j])
 
         for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
-            self.__states[i] = np.linalg.sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights).T \
+            self.__states[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights).T \
                 @ self.__dual_part_7_leaf[i]
             self.__epigraphical_relaxation_variable_s[stage_at_i][i] = 0.5 * (self.__dual_part_8_leaf[i]
                 + self.__dual_part_9_leaf[i])
 
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
-    def add_halves(self):
+    def add_halves(self):  # not finished
         self.__dual_part_5_nonleaf -= 0.5
         self.__dual_part_6_nonleaf += 0.5
         self.__dual_part_8_leaf -= 0.5
         self.__dual_part_9_leaf += 0.5
 
-    def subtract_halves(self):
+    def subtract_halves(self):  # not finished
         self.__dual_part_5_nonleaf += 0.5
         self.__dual_part_6_nonleaf -= 0.5
         self.__dual_part_8_leaf += 0.5
         self.__dual_part_9_leaf -= 0.5
 
-    def proximal_of_g_conjugate(self):
+    def proximal_of_g_conjugate(self):  # not finished
         # moreau_decomposition
         # precomposition
         pass
@@ -243,13 +246,18 @@ class Cache:
         # operate L transpose on dual parts
         self.operator_ell_adjoint()
         # old primal parts minus (gamma times new primal parts)
-        self.__states = copy_x - self.__gamma * self.__states
-        self.__controls = copy_u - self.__gamma * self.__controls
-        self.__dual_risk_variable_y = copy_y - self.__gamma * self.__dual_risk_variable_y
-        self.__epigraphical_relaxation_variable_s = copy_s - \
-            self.__gamma * self.__epigraphical_relaxation_variable_s
-        self.__epigraphical_relaxation_variable_tau = copy_t - \
-            self.__gamma * self.__epigraphical_relaxation_variable_tau
+        self.__states = [a_i - b_i for a_i, b_i in zip(copy_x, [j * self.__gamma for j in self.__states])]
+        self.__controls = [a_i - b_i for a_i, b_i in zip(copy_u, [j * self.__gamma for j in self.__controls])]
+        self.__dual_risk_variable_y = [a_i - b_i for a_i, b_i in
+                                       zip(copy_y, [j * self.__gamma for j in self.__dual_risk_variable_y])]
+        self.__epigraphical_relaxation_variable_s = [a_i - b_i for a_i, b_i in
+                                                     zip(copy_s,
+                                                         [j * self.__gamma for j in
+                                                          self.__epigraphical_relaxation_variable_s])]
+        self.__epigraphical_relaxation_variable_tau = [None] + [a_i - b_i for a_i, b_i in
+                                                                zip(copy_t[1:],
+                                                                    [j * self.__gamma for j in
+                                                                    self.__epigraphical_relaxation_variable_tau[1:]])]
 
     def x_new(self):
         self.proximal_of_f()
@@ -257,11 +265,17 @@ class Cache:
     def y_bar(self, copy_x, copy_u, copy_y, copy_s, copy_t,
               copy_w1, copy_w2, copy_w3, copy_w4, copy_w5, copy_w6, copy_w7, copy_w8, copy_w9):
         # modify primal parts
-        self.__states = 2 * self.__states - copy_x
-        self.__controls = 2 * self.__controls - copy_u
-        self.__dual_risk_variable_y = 2 * self.__dual_risk_variable_y - copy_y
-        self.__epigraphical_relaxation_variable_s = 2 * self.__epigraphical_relaxation_variable_s - copy_s
-        self.__epigraphical_relaxation_variable_tau = 2 * self.__epigraphical_relaxation_variable_tau - copy_t
+        self.__states = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__states], copy_x)]
+        self.__controls = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__controls], copy_u)]
+        self.__dual_risk_variable_y = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__dual_risk_variable_y],
+                                                                     copy_y)]
+        self.__epigraphical_relaxation_variable_s = [a_i - b_i for a_i, b_i in
+                                                     zip([j * 2 for j in self.__epigraphical_relaxation_variable_s],
+                                                         copy_s)]
+        self.__epigraphical_relaxation_variable_tau = [None] + [a_i - b_i for a_i, b_i in
+                                                                zip([j * 2 for j in
+                                                                     self.__epigraphical_relaxation_variable_tau[1:]],
+                                                                    copy_t[1:])]
         # operate L on primal parts
         self.operator_ell()
         # old dual parts plus (gamma times new dual parts)

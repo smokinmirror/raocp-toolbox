@@ -1,5 +1,6 @@
 import raocp as r
 import numpy as np
+import scipy as sp
 
 # ScenarioTree generation ----------------------------------------------------------------------------------------------
 
@@ -31,11 +32,11 @@ Bs = [Bw, 2 * Bw, 3 * Bw]  # n x u matrices
 
 cost_type = "Quadratic"
 cost_types = [cost_type] * 3
-Q = 10*np.eye(2)  # n x n matrix
+Q = 10 * np.eye(3)  # n x n matrix
 Qs = [Q, 2 * Q, 3 * Q]
-R = np.eye(2)  # u x u matrix OR scalar
+R = np.eye(3)  # u x u matrix OR scalar
 Rs = [R, 2 * R, 3 * R]
-Pf = 5*np.eye(2)  # n x n matrix
+Pf = 5 * np.eye(3)  # n x n matrix
 
 (risk_type, alpha) = ("AVaR", 0.5)
 problem = r.core.RAOCP(scenario_tree=tree)\
@@ -46,6 +47,7 @@ problem = r.core.RAOCP(scenario_tree=tree)\
 
 # print(problem)
 
-x0 = np.array([[2], [1]])
 cache = r.core.Cache(problem_spec=problem)
-cache.project_on_s2()
+initial_state = np.array([[2], [1], [-1]])
+gamma = 0.5
+cache.chock(initial_state, gamma)
