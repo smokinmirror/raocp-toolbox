@@ -154,6 +154,7 @@ class Cache:
                     tau_stack = np.vstack((tau_stack,
                                            self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j]))
 
+            # print(i, self.__dual_risk_variable_y[i].shape, s_stack.shape, tau_stack.shape)
             full_stack = np.vstack((self.__dual_risk_variable_y[i], s_stack, tau_stack))
             projection = self.__s2_projection_operator[i] @ full_stack
             self.__dual_risk_variable_y[i] = projection[0:self.__dual_risk_variable_y[i].size]
@@ -164,7 +165,7 @@ class Cache:
                     projection[self.__dual_risk_variable_y[i].size + children_of_i.size + k]
 
     def proximal_of_f(self):
-        # s0 ?
+        # s0 unchanged
         self.project_on_s1()
         self.project_on_s2()
         return "proximal of f complete"
@@ -195,14 +196,15 @@ class Cache:
             self.__dual_part_8_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_i][i]
             self.__dual_part_9_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_i][i]
 
-    def operator_ell_adjoint(self):
+    def operator_ell_transpose(self):
         for i in range(self.__raocp.tree.num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
             children_of_i = self.__raocp.tree.children_of(i)
             self.__dual_risk_variable_y[i] = (self.__dual_part_1_nonleaf[i]
                                               - self.__raocp.risk_at_node(i).vector_b
-                                              @ self.__dual_part_2_nonleaf[i])[..., None]  # reshape to column vector
+                                              @ self.__dual_part_2_nonleaf[i])\
+                .reshape((2 * self.__raocp.tree.children_of(i).size + 1, 1))  # reshape to column vector
             self.__epigraphical_relaxation_variable_s[stage_at_i][i] = self.__dual_part_2_nonleaf[i]
             self.__states[i] = 0
             self.__controls[i] = 0
@@ -223,17 +225,17 @@ class Cache:
 
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
-    def add_halves(self):  # not finished
-        self.__dual_part_5_nonleaf -= 0.5
-        self.__dual_part_6_nonleaf += 0.5
-        self.__dual_part_8_leaf -= 0.5
-        self.__dual_part_9_leaf += 0.5
+    def add_halves(self):
+        self.__dual_part_5_nonleaf = [j - 0.5 for j in self.__dual_part_5_nonleaf]
+        self.__dual_part_6_nonleaf = [j + 0.5 for j in self.__dual_part_6_nonleaf]
+        self.__dual_part_8_leaf = [j - 0.5 for j in self.__dual_part_8_leaf]
+        self.__dual_part_9_leaf = [j + 0.5 for j in self.__dual_part_9_leaf]
 
-    def subtract_halves(self):  # not finished
-        self.__dual_part_5_nonleaf += 0.5
-        self.__dual_part_6_nonleaf -= 0.5
-        self.__dual_part_8_leaf += 0.5
-        self.__dual_part_9_leaf -= 0.5
+    def subtract_halves(self):
+        self.__dual_part_5_nonleaf = [j + 0.5 for j in self.__dual_part_5_nonleaf]
+        self.__dual_part_6_nonleaf = [j - 0.5 for j in self.__dual_part_6_nonleaf]
+        self.__dual_part_8_leaf = [j + 0.5 for j in self.__dual_part_8_leaf]
+        self.__dual_part_9_leaf = [j - 0.5 for j in self.__dual_part_9_leaf]
 
     def proximal_of_g_conjugate(self):  # not finished
         # moreau_decomposition
@@ -244,7 +246,7 @@ class Cache:
 
     def x_bar(self, copy_x, copy_u, copy_y, copy_s, copy_t):
         # operate L transpose on dual parts
-        self.operator_ell_adjoint()
+        self.operator_ell_transpose()
         # old primal parts minus (gamma times new primal parts)
         self.__states = [a_i - b_i for a_i, b_i in zip(copy_x, [j * self.__gamma for j in self.__states])]
         self.__controls = [a_i - b_i for a_i, b_i in zip(copy_u, [j * self.__gamma for j in self.__controls])]
