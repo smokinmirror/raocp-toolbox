@@ -279,15 +279,30 @@ class Cache:
         # operate L on primal parts
         self.operator_ell()
         # old dual parts plus (gamma times new dual parts)
-        self.__dual_part_1_nonleaf = copy_w1 + self.__gamma * self.__dual_part_1_nonleaf
-        self.__dual_part_2_nonleaf = copy_w2 + self.__gamma * self.__dual_part_2_nonleaf
-        self.__dual_part_3_nonleaf = copy_w3 + self.__gamma * self.__dual_part_3_nonleaf
-        self.__dual_part_4_nonleaf = copy_w4 + self.__gamma * self.__dual_part_4_nonleaf
-        self.__dual_part_5_nonleaf = copy_w5 + self.__gamma * self.__dual_part_5_nonleaf
-        self.__dual_part_6_nonleaf = copy_w6 + self.__gamma * self.__dual_part_6_nonleaf
-        self.__dual_part_7_leaf = copy_w7 + self.__gamma * self.__dual_part_7_leaf
-        self.__dual_part_8_leaf = copy_w8 + self.__gamma * self.__dual_part_8_leaf
-        self.__dual_part_9_leaf = copy_w9 + self.__gamma * self.__dual_part_9_leaf
+        self.__dual_part_1_nonleaf = [a_i + b_i for a_i, b_i in
+                                      zip(copy_w1, [j * self.__gamma for j in self.__dual_part_1_nonleaf])]
+        self.__dual_part_2_nonleaf = [a_i + b_i for a_i, b_i in
+                                      zip(copy_w2, [j * self.__gamma for j in self.__dual_part_2_nonleaf])]
+        self.__dual_part_3_nonleaf = [a_i + b_i for a_i, b_i in
+                                      zip(copy_w3, [j * self.__gamma for j in self.__dual_part_3_nonleaf])]
+        self.__dual_part_4_nonleaf = [a_i + b_i for a_i, b_i in
+                                      zip(copy_w4, [j * self.__gamma for j in self.__dual_part_4_nonleaf])]
+        self.__dual_part_5_nonleaf = [a_i + b_i for a_i, b_i in
+                                      zip(copy_w5, [j * self.__gamma for j in self.__dual_part_5_nonleaf])]
+        self.__dual_part_6_nonleaf = [a_i + b_i for a_i, b_i in
+                                      zip(copy_w6, [j * self.__gamma for j in self.__dual_part_6_nonleaf])]
+        self.__dual_part_7_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
+            + [a_i + b_i for a_i, b_i in zip(copy_w7[self.__raocp.tree.num_nonleaf_nodes:],
+                                             [j * self.__gamma for j in
+                                              self.__dual_part_7_leaf[self.__raocp.tree.num_nonleaf_nodes:]])]
+        self.__dual_part_8_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
+            + [a_i + b_i for a_i, b_i in zip(copy_w8[self.__raocp.tree.num_nonleaf_nodes:],
+                                             [j * self.__gamma for j in
+                                              self.__dual_part_8_leaf[self.__raocp.tree.num_nonleaf_nodes:]])]
+        self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
+            + [a_i + b_i for a_i, b_i in zip(copy_w9[self.__raocp.tree.num_nonleaf_nodes:],
+                                             [j * self.__gamma for j in
+                                              self.__dual_part_9_leaf[self.__raocp.tree.num_nonleaf_nodes:]])]
 
     def y_new(self):
         self.proximal_of_g_conjugate()
@@ -322,6 +337,9 @@ class Cache:
             # run primal part of algorithm
             self.x_bar(copy_x, copy_u, copy_y, copy_s, copy_t)
             self.x_new()
+            # calculate error
+            current_error = max([np.linalg.norm(j, np.inf)
+                                 for j in [a_i - b_i for a_i, b_i in zip(self.__states, copy_x)]])
             # create backup copy of primal parts
             new_copy_x = self.__states.copy()
             new_copy_u = self.__controls.copy()
@@ -341,8 +359,7 @@ class Cache:
             # add to cache
             states_cache.append(self.__states)
             controls_cache.append(self.__controls)
-            # calculate error
-            current_error = np.linalg.norm(states_cache[-1] - states_cache[-2], np.inf)
+            # cache error
             e_cache.append(current_error)
             # check stopping criteria
             stopping_criteria = current_error < tolerance
