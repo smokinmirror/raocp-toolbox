@@ -2,6 +2,7 @@ import numpy as np
 import scipy.optimize
 from scipy.linalg import sqrtm
 import raocp.core.problem_spec as ps
+import raocp.core.cones as cones
 
 
 class Cache:
@@ -44,6 +45,9 @@ class Cache:
         self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes  # A+BK
         # S2 projection
         self.__s2_projection_operator = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
+        # cones
+        self.__nonleaf_constraint_cone = [None] * self.__raocp.tree.num_nonleaf_nodes
+        self.__leaf_constraint_cone = [None] * self.__raocp.tree.num_nodes
         # populate arrays
         self.__offline()
 
@@ -63,6 +67,15 @@ class Cache:
             self.__epigraphical_relaxation_variable_s[i] = np.zeros((largest_node_at_stage + 1, 1))
             if i > 0:
                 self.__epigraphical_relaxation_variable_tau[i] = np.zeros((largest_node_at_stage + 1, 1))
+
+        # cone initialisation
+        for i in range(self.__raocp.tree.num_nodes):
+            if i < self.__raocp.tree.num_nonleaf_nodes:
+                cones_list = [cones.NonnegativeOrthant()] * 2 \
+                             + [cones.SecondOrderCone()] * len(self.__raocp.tree.children_of(i))
+                self.__nonleaf_constraint_cone[i] = cones.Cartesian(cones_list)
+            else:
+                self.__leaf_constraint_cone[i] = cones.SecondOrderCone()
 
         # S1 projection offline
         for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
@@ -226,20 +239,34 @@ class Cache:
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
     def add_halves(self):
-        self.__dual_part_5_nonleaf = [j - 0.5 for j in self.__dual_part_5_nonleaf]
-        self.__dual_part_6_nonleaf = [j + 0.5 for j in self.__dual_part_6_nonleaf]
-        self.__dual_part_8_leaf = [j - 0.5 for j in self.__dual_part_8_leaf]
-        self.__dual_part_9_leaf = [j + 0.5 for j in self.__dual_part_9_leaf]
+        for i in range(self.__raocp.tree.num_nodes):
+            if i > 0:
+                self.__dual_part_5_nonleaf[i] = [j - 0.5 for j in self.__dual_part_5_nonleaf[i]]
+                self.__dual_part_6_nonleaf[i] = [j + 0.5 for j in self.__dual_part_6_nonleaf[i]]
+            if i >= self.__raocp.tree.num_nonleaf_nodes:
+                self.__dual_part_8_leaf[i] = [j - 0.5 for j in self.__dual_part_8_leaf[i]]
+                self.__dual_part_9_leaf[i] = [j + 0.5 for j in self.__dual_part_9_leaf[i]]
 
     def subtract_halves(self):
-        self.__dual_part_5_nonleaf = [j + 0.5 for j in self.__dual_part_5_nonleaf]
-        self.__dual_part_6_nonleaf = [j - 0.5 for j in self.__dual_part_6_nonleaf]
-        self.__dual_part_8_leaf = [j + 0.5 for j in self.__dual_part_8_leaf]
-        self.__dual_part_9_leaf = [j - 0.5 for j in self.__dual_part_9_leaf]
+        for i in range(self.__raocp.tree.num_nodes):
+            if i > 0:
+                self.__dual_part_5_nonleaf[i] = [j + 0.5 for j in self.__dual_part_5_nonleaf[i]]
+                self.__dual_part_6_nonleaf[i] = [j - 0.5 for j in self.__dual_part_6_nonleaf[i]]
+            if i >= self.__raocp.tree.num_nonleaf_nodes:
+                self.__dual_part_8_leaf[i] = [j + 0.5 for j in self.__dual_part_8_leaf[i]]
+                self.__dual_part_9_leaf[i] = [j - 0.5 for j in self.__dual_part_9_leaf[i]]
 
     def proximal_of_g_conjugate(self):  # not finished
+        # precomposition add halves
+        self.add_halves()
+        # proximal gbar (cone projections)
+
+
+        # prox gbar (.) = proj K K^i K
+
+
         # moreau_decomposition
-        # precomposition
+        # prox gast (.) = . - prox g (.)
         pass
 
     # CHAMBOLLE-POCK ###################################################################################################
