@@ -70,10 +70,11 @@ class Cache:
         self.__leaf_second_order_cone = [None] * self.__num_nodes
         for i in range(self.__num_nodes):
             if i < self.__num_nonleaf_nodes:
-                self.__nonleaf_constraint_cone[i] = cones.Cartesian([cones.NonnegativeOrthant()] * 2)
+                self.__nonleaf_constraint_cone[i] = cones.Cartesian([cones.NonnegativeOrthant(),
+                                                                     cones.NonnegativeOrthant()])
             if i > 0:
                 self.__nonleaf_second_order_cone[i] = cones.SecondOrderCone()
-            if i > self.__num_nonleaf_nodes:
+            if i >= self.__num_nonleaf_nodes:
                 self.__leaf_second_order_cone[i] = cones.SecondOrderCone()
 
         # populate arrays
@@ -186,10 +187,9 @@ class Cache:
                     projection[self.__dual_risk_variable_y[i].size + children_of_i.size + k]
 
     def proximal_of_f(self):
-        # s0 unchanged
+        # proximal of s0
         self.project_on_s1()
         self.project_on_s2()
-        return "proximal of f complete"
 
     # operator L and its transpose -------------------------------------------------------------------------------------
 
@@ -260,29 +260,26 @@ class Cache:
         self.__dual_part_9_leaf = [j - 0.5 for j in self.__dual_part_9_leaf]
 
     def proximal_of_g_conjugate(self):  # not finished
+        # create copy of dual
+        copy_dual = self.__dual_part.copy()
         # precomposition add halves
         self.add_halves()
         # proximal gbar (cone projections)
-        # for i in range(self.__num_nonleaf_nodes):
-        #     [self.__dual_part_1_nonleaf[i], self.__dual_part_2_nonleaf[i]] = self.__nonleaf_constraint_cone[i]\
-        #         .project([self.__dual_part_1_nonleaf[i], self.__dual_part_2_nonleaf[i]])
-        #     children_of_i = self.__raocp.tree.children_of(i)
-        #     print(np.vstack((self.__dual_part_3_nonleaf[j],
-        #                      self.__dual_part_4_nonleaf[j],
-        #                      self.__dual_part_5_nonleaf[j],
-        #                      self.__dual_part_6_nonleaf[j])))
-        #     for j in children_of_i:
-        #         projection = self.__nonleaf_second_order_cone[j].project(np.vstack((self.__dual_part_3_nonleaf[j],
-        #                                                                             self.__dual_part_4_nonleaf[j],
-        #                                                                             self.__dual_part_5_nonleaf[j],
-        #                                                                             self.__dual_part_6_nonleaf[j])))
+        for i in range(self.__num_nonleaf_nodes):
+            [self.__dual_part_1_nonleaf[i], self.__dual_part_2_nonleaf[i]] = self.__nonleaf_constraint_cone[i]\
+                .project([self.__dual_part_1_nonleaf[i], self.__dual_part_2_nonleaf[i]])
+            children_of_i = self.__raocp.tree.children_of(i)
+            for j in children_of_i:
+                self.__dual_part[self.__num_nodes * 2: self.__num_nodes * 6][j] = self.__nonleaf_second_order_cone[j]\
+                    .project(self.__dual_part[self.__num_nodes * 2: self.__num_nodes * 6][j])
 
-        # prox gbar (.) = proj K K^i K
-
-
-        # moreau_decomposition
-        # prox gast (.) = . - prox g (.)
-        pass
+        for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
+            self.__dual_part[self.__num_nodes * 6: self.__num_nodes * 9][i] = self.__leaf_second_order_cone[i]\
+                .project(self.__dual_part[self.__num_nodes * 6: self.__num_nodes * 9][i])
+        # precomposition subtract halves
+        self.subtract_halves()
+        # Moreau decomposition
+        self.__dual_part = [a_i - b_i for a_i, b_i in zip(copy_dual, self.__dual_part)]
 
     # CHAMBOLLE-POCK ###################################################################################################
 
@@ -399,6 +396,7 @@ class Cache:
             controls_cache.append(self.__controls)
             # cache error
             e_cache.append(current_error)
+            print(current_error)
             # check stopping criteria
             stopping_criteria = current_error < tolerance
             if stopping_criteria:
