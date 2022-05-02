@@ -12,43 +12,70 @@ class Cache:
 
     def __init__(self, problem_spec: ps.RAOCP):
         self.__raocp = problem_spec
+        self.__num_nodes = self.__raocp.tree.num_nodes
+        self.__num_nonleaf_nodes = self.__raocp.tree.num_nonleaf_nodes
+        self.__num_stages = self.__raocp.tree.num_stages
         self.__state_size = self.__raocp.state_dynamics_at_node(1).shape[1]
         self.__control_size = self.__raocp.control_dynamics_at_node(1).shape[1]
+
         # Chambolle-Pock
         self.__gamma = None
+
         # Chambolle-Pock primal
-        self.__states = [np.zeros((self.__state_size, 1))] * self.__raocp.tree.num_nodes  # x
-        self.__controls = [np.zeros((self.__control_size, 1))] * self.__raocp.tree.num_nonleaf_nodes  # u
-        self.__dual_risk_variable_y = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes  # y
-        self.__epigraphical_relaxation_variable_s = [np.zeros(0)] * (self.__raocp.tree.num_stages + 1)  # s
-        self.__epigraphical_relaxation_variable_tau = [None] + [np.zeros(0)] * self.__raocp.tree.num_stages  # tau
-        # Chambolle-Pock dual
-        self.__dual_part_1_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__dual_part_2_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nonleaf_nodes
-        # dual parts 3,4,5,6 stored in child nodes for convenience
-        self.__dual_part_3_nonleaf = [np.zeros((self.__state_size, 1))] * self.__raocp.tree.num_nodes
-        self.__dual_part_4_nonleaf = [np.zeros((self.__control_size, 1))] * self.__raocp.tree.num_nodes
-        self.__dual_part_5_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nodes
-        self.__dual_part_6_nonleaf = [np.zeros(1)] * self.__raocp.tree.num_nodes
-        self.__dual_part_7_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [np.zeros((self.__state_size, 1))] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
-        self.__dual_part_8_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [np.zeros(1)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
-        self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [np.zeros(1)] * (self.__raocp.tree.num_nodes - self.__raocp.tree.num_nonleaf_nodes)
+        self.__states = [np.zeros((self.__state_size, 1))] * self.__num_nodes  # x
+        self.__controls = [np.zeros((self.__control_size, 1))] * self.__num_nonleaf_nodes  # u
+        self.__dual_risk_variable_y = [np.zeros(0)] * self.__num_nonleaf_nodes  # y
+        self.__epigraphical_relaxation_variable_s = [np.zeros(0)] * (self.__num_stages + 1)  # s
+        self.__epigraphical_relaxation_variable_tau = [None] + [np.zeros(0)] * self.__num_stages  # tau
+        for i in range(self.__num_nonleaf_nodes):
+            self.__dual_risk_variable_y[i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
+
+        for i in range(self.__num_stages + 1):
+            largest_node_at_stage = max(self.__raocp.tree.nodes_at_stage(i))
+            # store variables in their node number inside the stage vector for s and tau
+            self.__epigraphical_relaxation_variable_s[i] = np.zeros((largest_node_at_stage + 1, 1))
+            if i > 0:
+                self.__epigraphical_relaxation_variable_tau[i] = np.zeros((largest_node_at_stage + 1, 1))
+
+        # Chambolle-Pock dual / parts 3,4,5,6 stored in child nodes for convenience
+        self.__dual_part = [np.zeros(1)] * (self.__num_nodes * 9)
+        self.__dual_part_1_nonleaf = self.__dual_part[0: self.__num_nodes]
+        self.__dual_part_2_nonleaf = self.__dual_part[self.__num_nodes * 1: self.__num_nodes * 2]
+        self.__dual_part_3_nonleaf = self.__dual_part[self.__num_nodes * 2: self.__num_nodes * 3]
+        self.__dual_part_4_nonleaf = self.__dual_part[self.__num_nodes * 3: self.__num_nodes * 4]
+        self.__dual_part_5_nonleaf = self.__dual_part[self.__num_nodes * 4: self.__num_nodes * 5]
+        self.__dual_part_6_nonleaf = self.__dual_part[self.__num_nodes * 5: self.__num_nodes * 6]
+        self.__dual_part_7_leaf = self.__dual_part[self.__num_nodes * 6: self.__num_nodes * 7]
+        self.__dual_part_8_leaf = self.__dual_part[self.__num_nodes * 7: self.__num_nodes * 8]
+        self.__dual_part_9_leaf = self.__dual_part[self.__num_nodes * 8: self.__num_nodes * 9]
+        for i in range(1, self.__num_nodes):
+            self.__dual_part_3_nonleaf[i] = np.zeros((self.__state_size, 1))
+            self.__dual_part_4_nonleaf[i] = np.zeros((self.__control_size, 1))
+            if i >= self.__num_nonleaf_nodes:
+                self.__dual_part_7_leaf[i] = np.zeros((self.__state_size, 1))
+
         # S1 projection
-        self.__P = [np.zeros((self.__state_size, self.__state_size))] * self.__raocp.tree.num_nodes
-        self.__q = [np.zeros((self.__state_size, 1))] * self.__raocp.tree.num_nodes
-        self.__K = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
-        self.__d = [np.zeros(0)] * self.__raocp.tree.num_nonleaf_nodes
-        self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
-        self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__raocp.tree.num_nodes  # A+BK
+        self.__P = [np.zeros((self.__state_size, self.__state_size))] * self.__num_nodes
+        self.__q = [np.zeros((self.__state_size, 1))] * self.__num_nodes
+        self.__K = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+        self.__d = [np.zeros(0)] * self.__num_nonleaf_nodes
+        self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+        self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__num_nodes  # A+BK
         # S2 projection
-        self.__s2_projection_operator = [np.zeros((0, 0))] * self.__raocp.tree.num_nonleaf_nodes
+        self.__s2_projection_operator = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+
         # cones
-        self.__nonleaf_constraint_cone = [None] * self.__raocp.tree.num_nonleaf_nodes
-        self.__nonleaf_second_order_cone = [None] * self.__raocp.tree.num_nodes
-        self.__leaf_second_order_cone = [None] * self.__raocp.tree.num_nodes
+        self.__nonleaf_constraint_cone = [None] * self.__num_nonleaf_nodes
+        self.__nonleaf_second_order_cone = [None] * self.__num_nodes
+        self.__leaf_second_order_cone = [None] * self.__num_nodes
+        for i in range(self.__num_nodes):
+            if i < self.__num_nonleaf_nodes:
+                self.__nonleaf_constraint_cone[i] = cones.Cartesian([cones.NonnegativeOrthant()] * 2)
+            if i > 0:
+                self.__nonleaf_second_order_cone[i] = cones.SecondOrderCone()
+            if i > self.__num_nonleaf_nodes:
+                self.__leaf_second_order_cone[i] = cones.SecondOrderCone()
+
         # populate arrays
         self.__offline()
 
@@ -58,33 +85,13 @@ class Cache:
         """
         Upon creation of Cache class, populate pre-computable arrays
         """
-        # variables size initialisation
-        for i in range(self.__raocp.tree.num_nonleaf_nodes):
-            self.__dual_risk_variable_y[i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
-
-        for i in range(self.__raocp.tree.num_stages + 1):
-            largest_node_at_stage = max(self.__raocp.tree.nodes_at_stage(i))
-            # store variables in their node number inside the stage vector for s and tau
-            self.__epigraphical_relaxation_variable_s[i] = np.zeros((largest_node_at_stage + 1, 1))
-            if i > 0:
-                self.__epigraphical_relaxation_variable_tau[i] = np.zeros((largest_node_at_stage + 1, 1))
-
-        # cone initialisation
-        for i in range(self.__raocp.tree.num_nodes):
-            if i < self.__raocp.tree.num_nonleaf_nodes:
-                self.__nonleaf_constraint_cone[i] = cones.Cartesian([cones.NonnegativeOrthant()] * 2)
-            if i > 0:
-                self.__nonleaf_second_order_cone[i] = cones.SecondOrderCone()
-            if i > self.__raocp.tree.num_nonleaf_nodes:
-                self.__leaf_second_order_cone[i] = cones.SecondOrderCone()
-
         # S1 projection offline
-        for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
+        for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             self.__P[i] = np.eye(self.__state_size)
 
         state_eye = np.eye(self.__state_size)
         control_eye = np.eye(self.__control_size)
-        for i in reversed(range(self.__raocp.tree.num_nonleaf_nodes)):
+        for i in reversed(range(self.__num_nonleaf_nodes)):
             sum_for_modified_control_dynamics = 0
             sum_for_K = 0
             for j in self.__raocp.tree.children_of(i):
@@ -107,7 +114,7 @@ class Cache:
             self.__P[i] = state_eye + self.__K[i].T @ self.__K[i] + sum_for_P
 
         # S2 projection offline
-        for i in range(self.__raocp.tree.num_nonleaf_nodes):
+        for i in range(self.__num_nonleaf_nodes):
             eye = np.eye(len(self.__raocp.tree.children_of(i)))
             zeros = np.zeros((self.__raocp.risk_at_node(i).matrix_f.shape[1], eye.shape[0]))
             row1 = np.hstack((self.__raocp.risk_at_node(i).matrix_e.T, -eye, -eye))
@@ -126,10 +133,10 @@ class Cache:
         use dynamic programming to project (x, u) onto the set S_1
         :returns: nothing
         """
-        for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
+        for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             self.__q[i] = - 2*self.__q[i]
 
-        for i in reversed(range(self.__raocp.tree.num_nonleaf_nodes)):
+        for i in reversed(range(self.__num_nonleaf_nodes)):
             sum_for_d = 0
             for j in self.__raocp.tree.children_of(i):
                 sum_for_d += self.__raocp.control_dynamics_at_node(j).T @ self.__q[i]
@@ -144,7 +151,7 @@ class Cache:
             self.__q[i] = - self.__states[i] + self.__K[i].T @ (self.__d[i] - self.__controls[i]) + sum_for_q
 
         # self.__states[0] = self.__states[0]
-        for i in range(self.__raocp.tree.num_nonleaf_nodes):
+        for i in range(self.__num_nonleaf_nodes):
             self.__controls[i] = self.__K[i] @ self.__states[i] + self.__d[i]
             for j in self.__raocp.tree.children_of(i):
                 self.__states[j] = self.__sum_of_dynamics[j] @ self.__states[i] \
@@ -155,7 +162,7 @@ class Cache:
         use kernels to project (y, s, tau) onto the set S_2
         :returns: nothing
         """
-        for i in range(self.__raocp.tree.num_nonleaf_nodes):
+        for i in range(self.__num_nonleaf_nodes):
             stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
             children_of_i = self.__raocp.tree.children_of(i)
             # get children of i out of next stage of s and tau
@@ -184,10 +191,10 @@ class Cache:
         self.project_on_s2()
         return "proximal of f complete"
 
-    # operator L and its adjoint ---------------------------------------------------------------------------------------
+    # operator L and its transpose -------------------------------------------------------------------------------------
 
     def operator_ell(self):
-        for i in range(self.__raocp.tree.num_nonleaf_nodes):
+        for i in range(self.__num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
             children_of_i = self.__raocp.tree.children_of(i)
@@ -203,15 +210,16 @@ class Cache:
                 self.__dual_part_5_nonleaf[j] = 0.5 * tau
                 self.__dual_part_6_nonleaf[j] = 0.5 * tau
 
-        for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
+        for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             self.__dual_part_7_leaf[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights) \
                 @ self.__states[i]
-            self.__dual_part_8_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_i][i]
-            self.__dual_part_9_leaf[i] = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_i][i]
+            s = self.__epigraphical_relaxation_variable_s[stage_at_i][i]
+            self.__dual_part_8_leaf[i] = 0.5 * s
+            self.__dual_part_9_leaf[i] = 0.5 * s
 
     def operator_ell_transpose(self):
-        for i in range(self.__raocp.tree.num_nonleaf_nodes):
+        for i in range(self.__num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
             children_of_i = self.__raocp.tree.children_of(i)
@@ -230,36 +238,32 @@ class Cache:
                 self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j] = 0.5 \
                     * (self.__dual_part_5_nonleaf[j] + self.__dual_part_6_nonleaf[j])
 
-        for i in range(self.__raocp.tree.num_nonleaf_nodes, self.__raocp.tree.num_nodes):
+        for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             self.__states[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights).T \
                 @ self.__dual_part_7_leaf[i]
             self.__epigraphical_relaxation_variable_s[stage_at_i][i] = 0.5 * (self.__dual_part_8_leaf[i]
-                + self.__dual_part_9_leaf[i])
+                                                                              + self.__dual_part_9_leaf[i])
 
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
     def add_halves(self):
         self.__dual_part_5_nonleaf = [j - 0.5 for j in self.__dual_part_5_nonleaf]
         self.__dual_part_6_nonleaf = [j + 0.5 for j in self.__dual_part_6_nonleaf]
-        self.__dual_part_8_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [j - 0.5 for j in self.__dual_part_8_leaf[self.__raocp.tree.num_nonleaf_nodes:]]
-        self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [j + 0.5 for j in self.__dual_part_9_leaf[self.__raocp.tree.num_nonleaf_nodes:]]
+        self.__dual_part_8_leaf = [j - 0.5 for j in self.__dual_part_8_leaf]
+        self.__dual_part_9_leaf = [j + 0.5 for j in self.__dual_part_9_leaf]
 
     def subtract_halves(self):
         self.__dual_part_5_nonleaf = [j + 0.5 for j in self.__dual_part_5_nonleaf]
         self.__dual_part_6_nonleaf = [j - 0.5 for j in self.__dual_part_6_nonleaf]
-        self.__dual_part_8_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [j + 0.5 for j in self.__dual_part_8_leaf[self.__raocp.tree.num_nonleaf_nodes:]]
-        self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [j - 0.5 for j in self.__dual_part_9_leaf[self.__raocp.tree.num_nonleaf_nodes:]]
+        self.__dual_part_8_leaf = [j + 0.5 for j in self.__dual_part_8_leaf]
+        self.__dual_part_9_leaf = [j - 0.5 for j in self.__dual_part_9_leaf]
 
     def proximal_of_g_conjugate(self):  # not finished
         # precomposition add halves
         self.add_halves()
         # proximal gbar (cone projections)
-        # for i in range(self.__raocp.tree.num_nonleaf_nodes):
+        # for i in range(self.__num_nonleaf_nodes):
         #     [self.__dual_part_1_nonleaf[i], self.__dual_part_2_nonleaf[i]] = self.__nonleaf_constraint_cone[i]\
         #         .project([self.__dual_part_1_nonleaf[i], self.__dual_part_2_nonleaf[i]])
         #     children_of_i = self.__raocp.tree.children_of(i)
@@ -331,18 +335,12 @@ class Cache:
                                       zip(copy_w5, [j * self.__gamma for j in self.__dual_part_5_nonleaf])]
         self.__dual_part_6_nonleaf = [a_i + b_i for a_i, b_i in
                                       zip(copy_w6, [j * self.__gamma for j in self.__dual_part_6_nonleaf])]
-        self.__dual_part_7_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [a_i + b_i for a_i, b_i in zip(copy_w7[self.__raocp.tree.num_nonleaf_nodes:],
-                                             [j * self.__gamma for j in
-                                              self.__dual_part_7_leaf[self.__raocp.tree.num_nonleaf_nodes:]])]
-        self.__dual_part_8_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [a_i + b_i for a_i, b_i in zip(copy_w8[self.__raocp.tree.num_nonleaf_nodes:],
-                                             [j * self.__gamma for j in
-                                              self.__dual_part_8_leaf[self.__raocp.tree.num_nonleaf_nodes:]])]
-        self.__dual_part_9_leaf = [None] * self.__raocp.tree.num_nonleaf_nodes \
-            + [a_i + b_i for a_i, b_i in zip(copy_w9[self.__raocp.tree.num_nonleaf_nodes:],
-                                             [j * self.__gamma for j in
-                                              self.__dual_part_9_leaf[self.__raocp.tree.num_nonleaf_nodes:]])]
+        self.__dual_part_7_leaf = [a_i + b_i for a_i, b_i in zip(copy_w7, [j * self.__gamma for j in
+                                                                 self.__dual_part_7_leaf])]
+        self.__dual_part_8_leaf = [a_i + b_i for a_i, b_i in zip(copy_w8, [j * self.__gamma for j in
+                                                                 self.__dual_part_8_leaf])]
+        self.__dual_part_9_leaf = [a_i + b_i for a_i, b_i in zip(copy_w9, [j * self.__gamma for j in
+                                                                 self.__dual_part_9_leaf])]
 
     def y_new(self):
         self.proximal_of_g_conjugate()
