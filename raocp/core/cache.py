@@ -165,6 +165,7 @@ class Cache:
             self.__q[i] = - self.__states[i] + self.__K[i].T @ (self.__d[i] - self.__controls[i]) + sum_for_q
 
         # self.__states[0] = self.__states[0]
+        print(self.__states[0])
         for i in range(self.__num_nonleaf_nodes):
             self.__controls[i] = self.__K[i] @ self.__states[i] + self.__d[i]
             for j in self.__raocp.tree.children_of(i):
