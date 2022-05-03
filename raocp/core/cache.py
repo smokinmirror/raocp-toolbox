@@ -82,39 +82,38 @@ class Cache:
 
     # OFFLINE ##########################################################################################################
 
-    def __offline(self):
-        """
-        Upon creation of Cache class, populate pre-computable arrays
-        """
-        # S1 projection offline
+    @staticmethod
+    def inverse_using_cholesky(matrix):
+        cholesky_of_matrix = np.linalg.cholesky(matrix)
+        inverse_of_cholesky = np.linalg.inv(cholesky_of_matrix)
+        inverse_of_matrix = inverse_of_cholesky.T @ inverse_of_cholesky
+        return inverse_of_matrix
+
+    def offline_projection_s1(self):
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             self.__P[i] = np.eye(self.__state_size)
 
-        state_eye = np.eye(self.__state_size)
-        control_eye = np.eye(self.__control_size)
         for i in reversed(range(self.__num_nonleaf_nodes)):
             sum_for_modified_control_dynamics = 0
-            sum_for_K = 0
+            sum_for_k = 0
             for j in self.__raocp.tree.children_of(i):
                 sum_for_modified_control_dynamics += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
                     @ self.__raocp.control_dynamics_at_node(j)
-                sum_for_K += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
+                sum_for_k += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
                     @ self.__raocp.state_dynamics_at_node(j)
 
-            choleskey_of_modified_control_dynamics = np.linalg.cholesky(control_eye + sum_for_modified_control_dynamics)
-            inverse_of_choleskey_of_modified_control_dynamics = np.linalg.inv(choleskey_of_modified_control_dynamics)
-            self.__inverse_of_modified_control_dynamics[i] = inverse_of_choleskey_of_modified_control_dynamics.T \
-                @ inverse_of_choleskey_of_modified_control_dynamics
-            self.__K[i] = - self.__inverse_of_modified_control_dynamics[i] @ sum_for_K  # not correct
-            sum_for_P = 0
+            self.__inverse_of_modified_control_dynamics[i] = \
+                self.inverse_using_cholesky(np.eye(self.__control_size) + sum_for_modified_control_dynamics)
+            self.__K[i] = - self.__inverse_of_modified_control_dynamics[i] @ sum_for_k
+            sum_for_p = 0
             for j in self.__raocp.tree.children_of(i):
                 self.__sum_of_dynamics[j] = self.__raocp.state_dynamics_at_node(j) \
                                     + self.__raocp.control_dynamics_at_node(j) @ self.__K[i]
-                sum_for_P += self.__sum_of_dynamics[j].T @ self.__P[j] @ self.__sum_of_dynamics[j]
+                sum_for_p += self.__sum_of_dynamics[j].T @ self.__P[j] @ self.__sum_of_dynamics[j]
 
-            self.__P[i] = state_eye + self.__K[i].T @ self.__K[i] + sum_for_P
+            self.__P[i] = np.eye(self.__state_size) + self.__K[i].T @ self.__K[i] + sum_for_p
 
-        # S2 projection offline
+    def offline_projection_s2(self):
         for i in range(self.__num_nonleaf_nodes):
             eye = np.eye(len(self.__raocp.tree.children_of(i)))
             zeros = np.zeros((self.__raocp.risk_at_node(i).matrix_f.shape[1], eye.shape[0]))
@@ -124,6 +123,13 @@ class Cache:
             kernel = scipy.linalg.null_space(s2_space)
             pseudoinverse_of_kernel = np.linalg.pinv(kernel)
             self.__s2_projection_operator[i] = kernel @ pseudoinverse_of_kernel
+
+    def __offline(self):
+        """
+        Upon creation of Cache class, calculate pre-computable arrays
+        """
+        self.offline_projection_s1()
+        self.offline_projection_s2()
 
     # ONLINE ###########################################################################################################
 
