@@ -129,6 +129,12 @@ class Cache:
 
     # proximal of f ----------------------------------------------------------------------------------------------------
 
+    def proximal_of_epigraphical_relaxation_variable_s_at_stage_zero(self):
+        """
+        proximal operator of the identity
+        """
+        self.__epigraphical_relaxation_variable_s[0] -= 1
+
     def project_on_s1(self):
         """
         use dynamic programming to project (x, u) onto the set S_1
@@ -187,7 +193,7 @@ class Cache:
                     projection[self.__dual_risk_variable_y[i].size + children_of_i.size + k]
 
     def proximal_of_f(self):
-        # proximal of s0
+        self.proximal_of_epigraphical_relaxation_variable_s_at_stage_zero()
         self.project_on_s1()
         self.project_on_s2()
 
