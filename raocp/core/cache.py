@@ -26,7 +26,7 @@ class Cache:
         self.__controls = [np.zeros((self.__control_size, 1))] * self.__num_nonleaf_nodes  # u
         self.__dual_risk_variable_y = [np.zeros(0)] * self.__num_nonleaf_nodes  # y
         self.__epigraphical_relaxation_variable_s = [np.zeros(0)] * (self.__num_stages + 1)  # s
-        self.__epigraphical_relaxation_variable_tau = [None] + [np.zeros(0)] * self.__num_stages  # tau
+        self.__epigraphical_relaxation_variable_tau = [np.zeros(0)] * (self.__num_stages + 1)  # tau
         for i in range(self.__num_nonleaf_nodes):
             self.__dual_risk_variable_y[i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
 
@@ -57,12 +57,13 @@ class Cache:
         # S1 projection
         self.__P = [np.zeros((self.__state_size, self.__state_size))] * self.__num_nodes
         self.__q = [np.zeros((self.__state_size, 1))] * self.__num_nodes
-        self.__K = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
-        self.__d = [np.zeros(0)] * self.__num_nonleaf_nodes
+        self.__K = [np.zeros((self.__state_size, self.__state_size))] * self.__num_nonleaf_nodes
+        self.__d = [np.zeros((self.__state_size, 1))] * self.__num_nonleaf_nodes
         self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
         self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__num_nodes  # A+BK
+
         # S2 projection
-        self.__s2_projection_operator = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+        self.__kernel_projection_operator = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
 
         # cones
         self.__nonleaf_constraint_cone = [None] * self.__num_nonleaf_nodes
@@ -89,7 +90,7 @@ class Cache:
         inverse_of_matrix = inverse_of_cholesky.T @ inverse_of_cholesky
         return inverse_of_matrix
 
-    def offline_projection_s1(self):
+    def offline_projection_dynamic_programming(self):
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             self.__P[i] = np.eye(self.__state_size)
 
@@ -113,7 +114,7 @@ class Cache:
 
             self.__P[i] = np.eye(self.__state_size) + self.__K[i].T @ self.__K[i] + sum_for_p
 
-    def offline_projection_s2(self):
+    def offline_projection_kernel(self):
         for i in range(self.__num_nonleaf_nodes):
             eye = np.eye(len(self.__raocp.tree.children_of(i)))
             zeros = np.zeros((self.__raocp.risk_at_node(i).matrix_f.shape[1], eye.shape[0]))
@@ -122,14 +123,14 @@ class Cache:
             s2_space = np.vstack((row1, row2))
             kernel = scipy.linalg.null_space(s2_space)
             pseudoinverse_of_kernel = np.linalg.pinv(kernel)
-            self.__s2_projection_operator[i] = kernel @ pseudoinverse_of_kernel
+            self.__kernel_projection_operator[i] = kernel @ pseudoinverse_of_kernel
 
     def __offline(self):
         """
         Upon creation of Cache class, calculate pre-computable arrays
         """
-        self.offline_projection_s1()
-        self.offline_projection_s2()
+        self.offline_projection_dynamic_programming()
+        self.offline_projection_kernel()
 
     # ONLINE ###########################################################################################################
 
@@ -188,9 +189,8 @@ class Cache:
                     tau_stack = np.vstack((tau_stack,
                                            self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j]))
 
-            # print(i, self.__dual_risk_variable_y[i].shape, s_stack.shape, tau_stack.shape)
             full_stack = np.vstack((self.__dual_risk_variable_y[i], s_stack, tau_stack))
-            projection = self.__s2_projection_operator[i] @ full_stack
+            projection = self.__kernel_projection_operator[i] @ full_stack
             self.__dual_risk_variable_y[i] = projection[0:self.__dual_risk_variable_y[i].size]
             for k in range(children_of_i.size):
                 self.__epigraphical_relaxation_variable_s[stage_at_children_of_i][children_of_i[k]] = \
@@ -218,17 +218,17 @@ class Cache:
                     self.__raocp.nonleaf_cost_at_node(j).nonleaf_state_weights) @ self.__states[i]
                 self.__dual_part_4_nonleaf[j] = sqrtm(
                     self.__raocp.nonleaf_cost_at_node(j).control_weights) @ self.__controls[i]
-                tau = self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j]
-                self.__dual_part_5_nonleaf[j] = 0.5 * tau
-                self.__dual_part_6_nonleaf[j] = 0.5 * tau
+                half_tau = 0.5 * self.__epigraphical_relaxation_variable_tau[stage_at_children_of_i][j]
+                self.__dual_part_5_nonleaf[j] = half_tau
+                self.__dual_part_6_nonleaf[j] = half_tau
 
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             self.__dual_part_7_leaf[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights) \
                 @ self.__states[i]
-            s = self.__epigraphical_relaxation_variable_s[stage_at_i][i]
-            self.__dual_part_8_leaf[i] = 0.5 * s
-            self.__dual_part_9_leaf[i] = 0.5 * s
+            half_s = 0.5 * self.__epigraphical_relaxation_variable_s[stage_at_i][i]
+            self.__dual_part_8_leaf[i] = half_s
+            self.__dual_part_9_leaf[i] = half_s
 
     def operator_ell_transpose(self):
         for i in range(self.__num_nonleaf_nodes):
