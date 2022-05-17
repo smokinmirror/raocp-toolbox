@@ -63,7 +63,6 @@ class TestCache(unittest.TestCase):
 
     def test_linear_operator_and_adjoint(self):
         cache = core_cache.Cache(TestCache.__raocp_from_markov)
-        cache._Cache__eta
 
 
 if __name__ == '__main__':

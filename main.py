@@ -24,10 +24,10 @@ tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
 
 # RAOCP generation -----------------------------------------------------------------------------------------------------
 
-Aw = np.eye(3)
+Aw = 0.5 * np.eye(3)
 As = [Aw, 2 * Aw, 3 * Aw]  # n x n matrices
 
-Bw = np.eye(3)
+Bw = 1.5 * np.eye(3)
 Bs = [Bw, 2 * Bw, 3 * Bw]  # n x u matrices
 
 cost_type = "Quadratic"
@@ -47,7 +47,7 @@ problem = r.core.RAOCP(scenario_tree=tree)\
 
 # print(problem)
 
-cache = r.core.Cache(problem_spec=problem)
+solver = r.core.Solver(problem_spec=problem)
 initial_state = np.array([[2], [1], [-1]])
-gamma = 0.5
-cache.chock(initial_state, gamma)
+alpha_cp = .5
+solver.chock(initial_state=initial_state, alpha1=alpha_cp, alpha2=alpha_cp, max_iters=10, tol=1e-5)

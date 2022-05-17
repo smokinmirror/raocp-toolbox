@@ -14,33 +14,32 @@ class Cache:
         self.__raocp = problem_spec
         self.__num_nodes = self.__raocp.tree.num_nodes
         self.__num_nonleaf_nodes = self.__raocp.tree.num_nonleaf_nodes
+        self.__num_leaf_nodes = self.__num_nodes - self.__num_nonleaf_nodes
         self.__num_stages = self.__raocp.tree.num_stages
         self.__state_size = self.__raocp.state_dynamics_at_node(1).shape[1]
         self.__control_size = self.__raocp.control_dynamics_at_node(1).shape[1]
 
         # Chambolle-Pock
-        self.__gamma = None
+        self.__alpha_primal = None
+        self.__alpha_dual = None
 
-        # Chambolle-Pock primal
+        # primal
         self.__primal_split = [0,
                                self.__num_nodes,
-                               self.__num_nodes + self.__num_nonleaf_nodes,
+                               self.__num_nodes + self.__num_nonleaf_nodes * 1,
                                self.__num_nodes + self.__num_nonleaf_nodes * 2,
-                               self.__num_nodes + self.__num_nonleaf_nodes * 2 + self.__num_stages + 1,
+                               self.__num_nodes + self.__num_nonleaf_nodes * 2 + (self.__num_stages + 1),
                                self.__num_nodes + self.__num_nonleaf_nodes * 2 + (self.__num_stages + 1) * 2]
         self.__primal_part = [np.zeros(1)] * self.__primal_split[-1]
-        self.__states = self.__primal_part[self.__primal_split[0]:
-                                           self.__primal_split[1]]  # x
-        self.__controls = [np.zeros((self.__control_size, 1))] * self.__num_nonleaf_nodes  # u
-        self.__controls = self.__primal_part[self.__primal_split[1]:
-                                             self.__primal_split[2]]
-        self.__dual_risk_variable_y = self.__primal_part[self.__primal_split[2]:
-                                                         self.__primal_split[3]]  # y
+        self.__states = self.__primal_part[self.__primal_split[0]: self.__primal_split[1]]  # x
+        self.__controls = self.__primal_part[self.__primal_split[1]: self.__primal_split[2]]  # u
+        self.__dual_risk_variable_y = self.__primal_part[self.__primal_split[2]: self.__primal_split[3]]  # y
         self.__epigraphical_relaxation_variable_s = self.__primal_part[self.__primal_split[3]:
                                                                        self.__primal_split[4]]  # s
         self.__epigraphical_relaxation_variable_tau = self.__primal_part[self.__primal_split[4]:
                                                                          self.__primal_split[5]]  # tau
         for i in range(self.__num_nonleaf_nodes):
+            self.__controls[i] = np.zeros((self.__control_size, 1))
             self.__dual_risk_variable_y[i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
 
         for i in range(self.__num_stages + 1):
@@ -50,24 +49,34 @@ class Cache:
             if i > 0:
                 self.__epigraphical_relaxation_variable_tau[i] = np.zeros((largest_node_at_stage + 1, 1))
 
-        # Chambolle-Pock dual / parts 3,4,5,6 stored in child nodes for convenience
+        # dual / parts 3,4,5,6 stored in child nodes for convenience
+        self.__dual_split = [0,
+                             self.__num_nonleaf_nodes * 1,
+                             self.__num_nonleaf_nodes * 2,
+                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 1,
+                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 2,
+                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 3,
+                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 4,
+                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 5,
+                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 6,
+                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 7]
         self.__dual_part = [np.zeros(1)] * (self.__num_nodes * 9)
-        self.__dual_part_1_nonleaf = self.__dual_part[0: self.__num_nodes]
-        self.__dual_part_2_nonleaf = self.__dual_part[self.__num_nodes * 1: self.__num_nodes * 2]
-        self.__dual_part_3_nonleaf = self.__dual_part[self.__num_nodes * 2: self.__num_nodes * 3]
-        self.__dual_part_4_nonleaf = self.__dual_part[self.__num_nodes * 3: self.__num_nodes * 4]
-        self.__dual_part_5_nonleaf = self.__dual_part[self.__num_nodes * 4: self.__num_nodes * 5]
-        self.__dual_part_6_nonleaf = self.__dual_part[self.__num_nodes * 5: self.__num_nodes * 6]
-        self.__dual_part_7_leaf = self.__dual_part[self.__num_nodes * 6: self.__num_nodes * 7]
-        self.__dual_part_8_leaf = self.__dual_part[self.__num_nodes * 7: self.__num_nodes * 8]
-        self.__dual_part_9_leaf = self.__dual_part[self.__num_nodes * 8: self.__num_nodes * 9]
+        self.__dual_part_1_nonleaf = self.__dual_part[self.__dual_split[0]: self.__dual_split[1]]
+        self.__dual_part_2_nonleaf = self.__dual_part[self.__dual_split[1]: self.__dual_split[2]]
+        self.__dual_part_3_nonleaf = self.__dual_part[self.__dual_split[2]: self.__dual_split[3]]
+        self.__dual_part_4_nonleaf = self.__dual_part[self.__dual_split[3]: self.__dual_split[4]]
+        self.__dual_part_5_nonleaf = self.__dual_part[self.__dual_split[4]: self.__dual_split[5]]
+        self.__dual_part_6_nonleaf = self.__dual_part[self.__dual_split[5]: self.__dual_split[6]]
+        self.__dual_part_7_leaf = self.__dual_part[self.__dual_split[6]: self.__dual_split[7]]
+        self.__dual_part_8_leaf = self.__dual_part[self.__dual_split[7]: self.__dual_split[8]]
+        self.__dual_part_9_leaf = self.__dual_part[self.__dual_split[8]: self.__dual_split[9]]
         for i in range(1, self.__num_nodes):
             self.__dual_part_3_nonleaf[i] = np.zeros((self.__state_size, 1))
             self.__dual_part_4_nonleaf[i] = np.zeros((self.__control_size, 1))
             if i >= self.__num_nonleaf_nodes:
                 self.__dual_part_7_leaf[i] = np.zeros((self.__state_size, 1))
 
-        # S1 projection
+        # dynamics projection
         self.__P = [np.zeros((self.__state_size, self.__state_size))] * self.__num_nodes
         self.__q = [np.zeros((self.__state_size, 1))] * self.__num_nodes
         self.__K = [np.zeros((self.__state_size, self.__state_size))] * self.__num_nonleaf_nodes
@@ -75,7 +84,7 @@ class Cache:
         self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
         self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__num_nodes  # A+BK
 
-        # S2 projection
+        # kernel projection
         self.__kernel_projection_operator = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
 
         # cones
@@ -306,127 +315,3 @@ class Cache:
         self.subtract_halves()
         # Moreau decomposition
         self.__dual_part = [a_i - b_i for a_i, b_i in zip(copy_dual, self.__dual_part)]
-
-    # CHAMBOLLE-POCK ###################################################################################################
-
-    def x_bar(self, copy_x, copy_u, copy_y, copy_s, copy_t):
-        # operate L transpose on dual parts
-        self.operator_ell_transpose()
-        # old primal parts minus (gamma times new primal parts)
-        self.__states = [a_i - b_i for a_i, b_i in zip(copy_x, [j * self.__gamma for j in self.__states])]
-        self.__controls = [a_i - b_i for a_i, b_i in zip(copy_u, [j * self.__gamma for j in self.__controls])]
-        self.__dual_risk_variable_y = [a_i - b_i for a_i, b_i in
-                                       zip(copy_y, [j * self.__gamma for j in self.__dual_risk_variable_y])]
-        self.__epigraphical_relaxation_variable_s = [a_i - b_i for a_i, b_i in
-                                                     zip(copy_s,
-                                                         [j * self.__gamma for j in
-                                                          self.__epigraphical_relaxation_variable_s])]
-        self.__epigraphical_relaxation_variable_tau = [None] + [a_i - b_i for a_i, b_i in
-                                                                zip(copy_t[1:],
-                                                                    [j * self.__gamma for j in
-                                                                    self.__epigraphical_relaxation_variable_tau[1:]])]
-
-    def x_new(self):
-        self.proximal_of_f()
-
-    def y_bar(self, copy_x, copy_u, copy_y, copy_s, copy_t,
-              copy_w1, copy_w2, copy_w3, copy_w4, copy_w5, copy_w6, copy_w7, copy_w8, copy_w9):
-        # modify primal parts
-        self.__states = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__states], copy_x)]
-        self.__controls = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__controls], copy_u)]
-        self.__dual_risk_variable_y = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__dual_risk_variable_y],
-                                                                     copy_y)]
-        self.__epigraphical_relaxation_variable_s = [a_i - b_i for a_i, b_i in
-                                                     zip([j * 2 for j in self.__epigraphical_relaxation_variable_s],
-                                                         copy_s)]
-        self.__epigraphical_relaxation_variable_tau = [None] + [a_i - b_i for a_i, b_i in
-                                                                zip([j * 2 for j in
-                                                                     self.__epigraphical_relaxation_variable_tau[1:]],
-                                                                    copy_t[1:])]
-        # operate L on primal parts
-        self.operator_ell()
-        # old dual parts plus (gamma times new dual parts)
-        self.__dual_part_1_nonleaf = [a_i + b_i for a_i, b_i in
-                                      zip(copy_w1, [j * self.__gamma for j in self.__dual_part_1_nonleaf])]
-        self.__dual_part_2_nonleaf = [a_i + b_i for a_i, b_i in
-                                      zip(copy_w2, [j * self.__gamma for j in self.__dual_part_2_nonleaf])]
-        self.__dual_part_3_nonleaf = [a_i + b_i for a_i, b_i in
-                                      zip(copy_w3, [j * self.__gamma for j in self.__dual_part_3_nonleaf])]
-        self.__dual_part_4_nonleaf = [a_i + b_i for a_i, b_i in
-                                      zip(copy_w4, [j * self.__gamma for j in self.__dual_part_4_nonleaf])]
-        self.__dual_part_5_nonleaf = [a_i + b_i for a_i, b_i in
-                                      zip(copy_w5, [j * self.__gamma for j in self.__dual_part_5_nonleaf])]
-        self.__dual_part_6_nonleaf = [a_i + b_i for a_i, b_i in
-                                      zip(copy_w6, [j * self.__gamma for j in self.__dual_part_6_nonleaf])]
-        self.__dual_part_7_leaf = [a_i + b_i for a_i, b_i in zip(copy_w7, [j * self.__gamma for j in
-                                                                 self.__dual_part_7_leaf])]
-        self.__dual_part_8_leaf = [a_i + b_i for a_i, b_i in zip(copy_w8, [j * self.__gamma for j in
-                                                                 self.__dual_part_8_leaf])]
-        self.__dual_part_9_leaf = [a_i + b_i for a_i, b_i in zip(copy_w9, [j * self.__gamma for j in
-                                                                 self.__dual_part_9_leaf])]
-
-    def y_new(self):
-        self.proximal_of_g_conjugate()
-
-    def chock(self, initial_state, gamma, tolerance=1e-5):
-        """
-        Chambolle-Pock algorithm
-        """
-        self.__states[0] = initial_state
-        self.__gamma = gamma
-        iteration = 0
-        # primal cache
-        states_cache = []
-        controls_cache = []
-        e_cache = []
-        keep_running = True
-        while keep_running:
-            # create copy of parts
-            copy_x = self.__states.copy()
-            copy_u = self.__controls.copy()
-            copy_y = self.__dual_risk_variable_y.copy()
-            copy_s = self.__epigraphical_relaxation_variable_s.copy()
-            copy_t = self.__epigraphical_relaxation_variable_tau.copy()
-            copy_w1 = self.__dual_part_1_nonleaf.copy()
-            copy_w2 = self.__dual_part_2_nonleaf.copy()
-            copy_w3 = self.__dual_part_3_nonleaf.copy()
-            copy_w4 = self.__dual_part_4_nonleaf.copy()
-            copy_w5 = self.__dual_part_5_nonleaf.copy()
-            copy_w6 = self.__dual_part_6_nonleaf.copy()
-            copy_w7 = self.__dual_part_7_leaf.copy()
-            copy_w8 = self.__dual_part_8_leaf.copy()
-            copy_w9 = self.__dual_part_9_leaf.copy()
-            # run primal part of algorithm
-            self.x_bar(copy_x, copy_u, copy_y, copy_s, copy_t)
-            self.x_new()
-            # calculate error
-            current_error = max([np.linalg.norm(j, np.inf)
-                                 for j in [a_i - b_i for a_i, b_i in zip(self.__states, copy_x)]])
-            # create backup copy of primal parts
-            new_copy_x = self.__states.copy()
-            new_copy_u = self.__controls.copy()
-            new_copy_y = self.__dual_risk_variable_y.copy()
-            new_copy_s = self.__epigraphical_relaxation_variable_s.copy()
-            new_copy_t = self.__epigraphical_relaxation_variable_tau.copy()
-            # run dual part of algorithm
-            self.y_bar(copy_x, copy_u, copy_y, copy_s, copy_t,
-                       copy_w1, copy_w2, copy_w3, copy_w4, copy_w5, copy_w6, copy_w7, copy_w8, copy_w9)
-            self.y_new()
-            # restore backup copy of primal parts
-            self.__states = new_copy_x
-            self.__controls = new_copy_u
-            self.__dual_risk_variable_y = new_copy_y
-            self.__epigraphical_relaxation_variable_s = new_copy_s
-            self.__epigraphical_relaxation_variable_tau = new_copy_t
-            # add to cache
-            states_cache.append(self.__states)
-            controls_cache.append(self.__controls)
-            # cache error
-            e_cache.append(current_error)
-            print(current_error)
-            # check stopping criteria
-            max_iterations = 100
-            iteration += 1
-            stopping_criteria = iteration > max_iterations  # current_error < tolerance
-            if stopping_criteria:
-                keep_running = False
