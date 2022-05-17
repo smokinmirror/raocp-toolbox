@@ -22,11 +22,24 @@ class Cache:
         self.__gamma = None
 
         # Chambolle-Pock primal
-        self.__states = [np.zeros((self.__state_size, 1))] * self.__num_nodes  # x
+        self.__primal_split = [0,
+                               self.__num_nodes,
+                               self.__num_nodes + self.__num_nonleaf_nodes,
+                               self.__num_nodes + self.__num_nonleaf_nodes * 2,
+                               self.__num_nodes + self.__num_nonleaf_nodes * 2 + self.__num_stages + 1,
+                               self.__num_nodes + self.__num_nonleaf_nodes * 2 + (self.__num_stages + 1) * 2]
+        self.__primal_part = [np.zeros(1)] * self.__primal_split[-1]
+        self.__states = self.__primal_part[self.__primal_split[0]:
+                                           self.__primal_split[1]]  # x
         self.__controls = [np.zeros((self.__control_size, 1))] * self.__num_nonleaf_nodes  # u
-        self.__dual_risk_variable_y = [np.zeros(0)] * self.__num_nonleaf_nodes  # y
-        self.__epigraphical_relaxation_variable_s = [np.zeros(0)] * (self.__num_stages + 1)  # s
-        self.__epigraphical_relaxation_variable_tau = [np.zeros(0)] * (self.__num_stages + 1)  # tau
+        self.__controls = self.__primal_part[self.__primal_split[1]:
+                                             self.__primal_split[2]]
+        self.__dual_risk_variable_y = self.__primal_part[self.__primal_split[2]:
+                                                         self.__primal_split[3]]  # y
+        self.__epigraphical_relaxation_variable_s = self.__primal_part[self.__primal_split[3]:
+                                                                       self.__primal_split[4]]  # s
+        self.__epigraphical_relaxation_variable_tau = self.__primal_part[self.__primal_split[4]:
+                                                                         self.__primal_split[5]]  # tau
         for i in range(self.__num_nonleaf_nodes):
             self.__dual_risk_variable_y[i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
 
