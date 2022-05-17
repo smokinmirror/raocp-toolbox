@@ -361,6 +361,7 @@ class Cache:
         """
         self.__states[0] = initial_state
         self.__gamma = gamma
+        iteration = 0
         # primal cache
         states_cache = []
         controls_cache = []
@@ -411,6 +412,8 @@ class Cache:
             e_cache.append(current_error)
             print(current_error)
             # check stopping criteria
-            stopping_criteria = current_error < tolerance
+            max_iterations = 100
+            iteration += 1
+            stopping_criteria = iteration > max_iterations  # current_error < tolerance
             if stopping_criteria:
                 keep_running = False

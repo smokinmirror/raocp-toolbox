@@ -8,7 +8,6 @@ import numpy as np
 class TestCache(unittest.TestCase):
     __tree_from_markov = None
     __raocp_from_markov = None
-    __cache = None
     __good_size = 3
 
     @staticmethod
@@ -50,23 +49,21 @@ class TestCache(unittest.TestCase):
                 .with_all_leaf_costs(cost_type, leaf_state_weight) \
                 .with_all_risks(risk_type, alpha)
 
-    @staticmethod
-    def __construct_cache():
-        if TestCache.__cache is None:
-            TestCache.__cache = core_cache.Cache(TestCache.__raocp_from_markov)
-
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         TestCache.__construct_tree_from_markov()
         TestCache.__construct_raocp_from_markov()
-        TestCache.__construct_cache()
 
     def test_inverse_using_cholesky(self):
         random_matrix = np.random.random((TestCache.__good_size, TestCache.__good_size))
         positive_definite_matrix = random_matrix @ random_matrix.T
         inverse = TestCache.__cache.inverse_using_cholesky(positive_definite_matrix)
         np.testing.assert_allclose(inverse @ positive_definite_matrix, np.eye(TestCache.__good_size), atol=1e-12)
+
+    def test_linear_operator_and_adjoint(self):
+        cache = core_cache.Cache(TestCache.__raocp_from_markov)
+        cache._Cache__eta
 
 
 if __name__ == '__main__':
