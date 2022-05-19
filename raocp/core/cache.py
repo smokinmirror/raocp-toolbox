@@ -280,25 +280,25 @@ class Cache:
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
     def add_halves(self):
-        self.__dual_5 = [j - 0.5 for j in self.__dual_5]
-        self.__dual_6 = [j + 0.5 for j in self.__dual_6]
-        self.__dual_8 = [j - 0.5 for j in self.__dual_8]
-        self.__dual_9 = [j + 0.5 for j in self.__dual_9]
+        self.__dual[self.__split_d[5]] = [j - 0.5 for j in self.__dual[self.__split_d[5]]]
+        self.__dual[self.__split_d[6]] = [j + 0.5 for j in self.__dual[self.__split_d[6]]]
+        self.__dual[self.__split_d[8]] = [j - 0.5 for j in self.__dual[self.__split_d[8]]]
+        self.__dual[self.__split_d[9]] = [j + 0.5 for j in self.__dual[self.__split_d[9]]]
 
     def subtract_halves(self):
-        self.__dual_5 = [j + 0.5 for j in self.__dual_5]
-        self.__dual_6 = [j - 0.5 for j in self.__dual_6]
-        self.__dual_8 = [j + 0.5 for j in self.__dual_8]
-        self.__dual_9 = [j - 0.5 for j in self.__dual_9]
+        self.__dual[self.__split_d[5]] = [j + 0.5 for j in self.__dual[self.__split_d[5]]]
+        self.__dual[self.__split_d[6]] = [j - 0.5 for j in self.__dual[self.__split_d[6]]]
+        self.__dual[self.__split_d[8]] = [j + 0.5 for j in self.__dual[self.__split_d[8]]]
+        self.__dual[self.__split_d[9]] = [j - 0.5 for j in self.__dual[self.__split_d[9]]]
 
-    def proximal_of_g_conjugate(self):
+    def proximal_of_g_conjugate(self):  # not perfect ##################################################################
         # precomposition add halves
         self.add_halves()
         # proximal gbar (cone projections)
         for i in range(self.__num_nonleaf_nodes):
-            [self.__dual[self.__split_d[1 + i]], self.__dual[self.__split_d[2 + i]]] = \
+            [self.__dual[self.__split_d[1] + i], self.__dual[self.__split_d[2] + i]] = \
                 self.__nonleaf_constraint_cone[i]\
-                    .project([self.__dual[self.__split_d[1 + i]], self.__dual[self.__split_d[2 + i]]])
+                    .project([self.__dual[self.__split_d[1] + i], self.__dual[self.__split_d[2] + i]])
             children_of_i = self.__raocp.tree.children_of(i)
             for j in children_of_i:
                 self.__dual[self.__split_d[3]: self.__split_d[7]][j] = self.__nonleaf_second_order_cone[j]\
