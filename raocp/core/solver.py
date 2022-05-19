@@ -1,6 +1,7 @@
 import numpy as np
 import raocp.core.problem_spec as ps
 import raocp.core.cache as cache
+import raocp.core.operators as ops
 
 
 class Solver:
@@ -10,72 +11,40 @@ class Solver:
 
     def __init__(self, problem_spec: ps.RAOCP):
         self.__raocp = problem_spec
-        self.__cache = None
-        self.__solver_parameter_1 = None
-        self.__solver_parameter_2 = None
-        self.__create_cache()
-
-    def __create_cache(self):
-        if self.__cache is None:
-            self.__cache = cache.Cache(self.__raocp)
+        self.__cache = cache.Cache(self.__raocp)
+        self.__operator = ops.Operator(self.__raocp, self.__cache.get_primal_split(), self.__cache.get_dual_split())
+        self.__primal = None
+        self.__old_primal = None
+        self.__dual = None
+        self.__old_dual = None
+        self.__parameter_1 = None
+        self.__parameter_2 = None
 
     def primal_k_plus_half(self):
+        dual, _ = self.__cache.get_dual()
         # operate L transpose on dual parts
-        self.__cache.operator_ell_transpose()
-
-        # # old primal parts minus (gamma times new primal parts)
-        # self.__states = [a_i - b_i for a_i, b_i in zip(copy_x, [j * self.__gamma for j in self.__states])]
-        # self.__controls = [a_i - b_i for a_i, b_i in zip(copy_u, [j * self.__gamma for j in self.__controls])]
-        # self.__dual_risk_variable_y = [a_i - b_i for a_i, b_i in
-        #                                zip(copy_y, [j * self.__gamma for j in self.__dual_risk_variable_y])]
-        # self.__epigraphical_relaxation_variable_s = [a_i - b_i for a_i, b_i in
-        #                                              zip(copy_s,
-        #                                                  [j * self.__gamma for j in
-        #                                                   self.__epigraphical_relaxation_variable_s])]
-        # self.__epigraphical_relaxation_variable_tau = [None] + [a_i - b_i for a_i, b_i in
-        #                                                         zip(copy_t[1:],
-        #                                                             [j * self.__gamma for j in
-        #                                                             self.__epigraphical_relaxation_variable_tau[1:]])]
+        ell_transpose_dual = self.__operator.ell_transpose(dual)
+        # get old primal
+        _, old_primal = self.__cache.get_primal()
+        # old primal minus (alpha1 times ell_transpose_dual)
+        self.__cache._Cache__primal = [a_i - b_i for a_i, b_i in zip(old_primal, [j * self.__parameter_1
+                                                                                  for j in ell_transpose_dual])]
 
     def primal_k_plus_one(self):
         self.__cache.proximal_of_f()
 
     def dual_k_plus_half(self):
-        # # modify primal parts
-        # self.__states = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__states], copy_x)]
-        # self.__controls = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__controls], copy_u)]
-        # self.__dual_risk_variable_y = [a_i - b_i for a_i, b_i in zip([j * 2 for j in self.__dual_risk_variable_y],
-        #                                                              copy_y)]
-        # self.__epigraphical_relaxation_variable_s = [a_i - b_i for a_i, b_i in
-        #                                              zip([j * 2 for j in self.__epigraphical_relaxation_variable_s],
-        #                                                  copy_s)]
-        # self.__epigraphical_relaxation_variable_tau = [None] + [a_i - b_i for a_i, b_i in
-        #                                                         zip([j * 2 for j in
-        #                                                              self.__epigraphical_relaxation_variable_tau[1:]],
-        #                                                             copy_t[1:])]
-
-        # operate L on primal parts
-        self.__cache.operator_ell()
-
-        # # old dual parts plus (gamma times new dual parts)
-        # self.__dual_part_1_nonleaf = [a_i + b_i for a_i, b_i in
-        #                               zip(copy_w1, [j * self.__gamma for j in self.__dual_part_1_nonleaf])]
-        # self.__dual_part_2_nonleaf = [a_i + b_i for a_i, b_i in
-        #                               zip(copy_w2, [j * self.__gamma for j in self.__dual_part_2_nonleaf])]
-        # self.__dual_part_3_nonleaf = [a_i + b_i for a_i, b_i in
-        #                               zip(copy_w3, [j * self.__gamma for j in self.__dual_part_3_nonleaf])]
-        # self.__dual_part_4_nonleaf = [a_i + b_i for a_i, b_i in
-        #                               zip(copy_w4, [j * self.__gamma for j in self.__dual_part_4_nonleaf])]
-        # self.__dual_part_5_nonleaf = [a_i + b_i for a_i, b_i in
-        #                               zip(copy_w5, [j * self.__gamma for j in self.__dual_part_5_nonleaf])]
-        # self.__dual_part_6_nonleaf = [a_i + b_i for a_i, b_i in
-        #                               zip(copy_w6, [j * self.__gamma for j in self.__dual_part_6_nonleaf])]
-        # self.__dual_part_7_leaf = [a_i + b_i for a_i, b_i in zip(copy_w7, [j * self.__gamma for j in
-        #                                                          self.__dual_part_7_leaf])]
-        # self.__dual_part_8_leaf = [a_i + b_i for a_i, b_i in zip(copy_w8, [j * self.__gamma for j in
-        #                                                          self.__dual_part_8_leaf])]
-        # self.__dual_part_9_leaf = [a_i + b_i for a_i, b_i in zip(copy_w9, [j * self.__gamma for j in
-        #                                                          self.__dual_part_9_leaf])]
+        # get primal k+1 and k
+        primal, old_primal = self.__cache.get_primal()
+        # two times new primal minus old primal
+        modified_primal = [a_i - b_i for a_i, b_i in zip([j * 2 for j in primal], old_primal)]
+        # operate L on modified primal
+        ell_primal = self.__operator.ell(modified_primal)
+        # get old dual
+        _, old_dual = self.__cache.get_dual()
+        # old dual plus (gamma times ell_primal)
+        self.__cache._Cache__dual = [a_i + b_i for a_i, b_i in zip(old_dual, [j * self.__parameter_2
+                                                                              for j in ell_primal])]
 
     def dual_k_plus_one(self):
         self.__cache.proximal_of_g_conjugate()
@@ -84,16 +53,12 @@ class Solver:
         """
         Chambolle-Pock algorithm
         """
-        # self.__states[0] = initial_state
-        self.__solver_parameter_1 = alpha1
-        self.__solver_parameter_2 = alpha2
+        self.__primal[0] = initial_state
+        self.__parameter_1 = alpha1
+        self.__parameter_2 = alpha2
         max_iterations = max_iters
         current_iteration = 0
-
-        # primal cache
-        states_cache = []
-        controls_cache = []
-        e_cache = []
+        error_cache = []
 
         keep_running = True
         while keep_running:
@@ -110,10 +75,10 @@ class Solver:
                                  for j in [a_i - b_i for a_i, b_i in zip(self.__states, copy_x)]])
 
             # cache variables
-            states_cache.append(self.__states)
-            controls_cache.append(self.__controls)
+            self.__cache._update_cache()
+
             # cache error
-            e_cache.append(current_error)
+            error_cache.append(current_error)
             print(current_error)
 
             # check stopping criteria
