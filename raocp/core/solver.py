@@ -49,6 +49,27 @@ class Solver:
     def dual_k_plus_one(self):
         self.__cache.proximal_of_g_conjugate()
 
+    def calculate_errors(self):
+        # in this function, p = primal and d = dual
+        p_new, p = self.__cache.get_primal()
+        d_new, d = self.__cache.get_dual()
+        # error 1
+        p_minus_p_new = [a_i - b_i for a_i, b_i in zip(p, p_new)]
+        p_minus_p_new_over_alpha1 = [a_i / b_i for a_i, b_i in zip(p_minus_p_new, self.__parameter_1)]
+        d_minus_d_new = [a_i - b_i for a_i, b_i in zip(d, d_new)]
+        ell_transpose_d_minus_d_new = self.__operator.ell_transpose(d_minus_d_new)
+        error1 = [a_i - b_i for a_i, b_i in zip(p_minus_p_new_over_alpha1, ell_transpose_d_minus_d_new)]
+        # error 2
+        d_minus_d_new_over_alpha2 = [a_i / b_i for a_i, b_i in zip(d_minus_d_new, self.__parameter_2)]
+        p_new_minus_p = [a_i - b_i for a_i, b_i in zip(p_new, p)]
+        ell_p_new_minus_p = self.__operator.ell(p_new_minus_p)
+        error2 = [a_i + b_i for a_i, b_i in zip(d_minus_d_new_over_alpha2, ell_p_new_minus_p)]
+        # error 0
+        ell_error2 = self.__operator.ell_transpose(error2)
+        error0 = [a_i + b_i for a_i, b_i in zip(error1, ell_error2)]
+
+        return error0, error1, error2
+
     def chock(self, initial_state, alpha1=1.0, alpha2=1.0, max_iters=10, tol=1e-5):
         """
         Chambolle-Pock algorithm
@@ -56,7 +77,6 @@ class Solver:
         self.__primal[0] = initial_state
         self.__parameter_1 = alpha1
         self.__parameter_2 = alpha2
-        max_iterations = max_iters
         current_iteration = 0
         error_cache = []
 
@@ -71,8 +91,10 @@ class Solver:
             self.dual_k_plus_one()
 
             # calculate error
-            current_error = max([np.linalg.norm(j, np.inf)
-                                 for j in [a_i - b_i for a_i, b_i in zip(self.__states, copy_x)]])
+            error0, error1, error2 = self.calculate_errors()
+            current_error = max([np.linalg.norm(error0, np.inf),
+                                 np.linalg.norm(error1, np.inf),
+                                 np.linalg.norm(error2, np.inf)])
 
             # cache variables
             self.__cache._update_cache()
@@ -82,7 +104,9 @@ class Solver:
             print(current_error)
 
             # check stopping criteria
-            stopping_criteria = current_iteration > max_iterations
-            if stopping_criteria:
+            if current_iteration >= max_iters:
                 keep_running = False
-            current_iteration += 1
+            if current_error <= tol:
+                keep_running = False
+            if keep_running is True:
+                current_iteration += 1

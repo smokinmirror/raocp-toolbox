@@ -34,7 +34,7 @@ class Cache:
         self.__q = [np.zeros((self.__state_size, 1))] * self.__num_nodes
         self.__K = [np.zeros((self.__state_size, self.__state_size))] * self.__num_nonleaf_nodes
         self.__d = [np.zeros((self.__state_size, 1))] * self.__num_nonleaf_nodes
-        self.__cholesky_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+        self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
         self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__num_nodes  # A+BK
 
         # kernel projection
