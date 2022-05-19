@@ -8,14 +8,14 @@ class Operator:
     Linear operators
     """
 
-    def __init__(self, problem_spec: ps.RAOCP, primal_split, dual_split):
+    def __init__(self, problem_spec: ps.RAOCP, initial_primal, primal_split, initial_dual, dual_split):
         self.__raocp = problem_spec
         self.__num_nonleaf_nodes = self.__raocp.tree.num_nonleaf_nodes
         self.__num_nodes = self.__raocp.tree.num_nodes
+        self.__primal = initial_primal
         self.__primal_split = primal_split
-        self.__primal = [] * self.__primal_split[-1]
+        self.__dual = initial_dual
         self.__dual_split = dual_split
-        self.__dual = [] * self.__dual_split[-1]
         self._create_sections()
 
     def _create_sections(self):

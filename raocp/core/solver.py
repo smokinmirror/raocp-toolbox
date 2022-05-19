@@ -12,11 +12,11 @@ class Solver:
     def __init__(self, problem_spec: ps.RAOCP):
         self.__raocp = problem_spec
         self.__cache = cache.Cache(self.__raocp)
-        self.__operator = ops.Operator(self.__raocp, self.__cache.get_primal_split(), self.__cache.get_dual_split())
-        self.__primal = None
-        self.__old_primal = None
-        self.__dual = None
-        self.__old_dual = None
+        _, initial_primal = self.__cache.get_primal()
+        _, initial_dual = self.__cache.get_dual()
+        self.__operator = ops.Operator(self.__raocp,
+                                       initial_primal, self.__cache.get_primal_split(),
+                                       initial_dual, self.__cache.get_dual_split())
         self.__parameter_1 = None
         self.__parameter_2 = None
 
@@ -74,7 +74,7 @@ class Solver:
         """
         Chambolle-Pock algorithm
         """
-        self.__primal[0] = initial_state
+        self.__cache._Cache__primal[0] = initial_state
         self.__parameter_1 = alpha1
         self.__parameter_2 = alpha2
         current_iteration = 0

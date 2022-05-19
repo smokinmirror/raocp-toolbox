@@ -29,6 +29,7 @@ regular_test() {
     python -W ignore tests/test_cones.py -v
     python -W ignore tests/test_costs.py -v
     python -W ignore tests/test_dynamics.py -v
+    python -W ignore tests/test_operators.py -v
     python -W ignore tests/test_raocp.py -v
     python -W ignore tests/test_risks.py -v
     python -W ignore tests/test_scenario_tree.py -v

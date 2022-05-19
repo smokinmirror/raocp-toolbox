@@ -97,7 +97,7 @@ class Cache:
                              self.__num_nonleaf_nodes * 2 + self.__num_nodes * 5,
                              self.__num_nonleaf_nodes * 2 + self.__num_nodes * 6,
                              self.__num_nonleaf_nodes * 2 + self.__num_nodes * 7]
-        self.__dual = [np.zeros(1)] * (self.__num_nodes * 9)
+        self.__dual = [np.zeros(1)] * self.__dual_split[-1]
         self.__dual_1_nonleaf = self.__dual[self.__dual_split[0]: self.__dual_split[1]]
         self.__dual_2_nonleaf = self.__dual[self.__dual_split[1]: self.__dual_split[2]]
         self.__dual_3_nonleaf = self.__dual[self.__dual_split[2]: self.__dual_split[3]]
@@ -112,6 +112,8 @@ class Cache:
             self.__dual_4_nonleaf[i] = np.zeros((self.__control_size, 1))
             if i >= self.__num_nonleaf_nodes:
                 self.__dual_7_leaf[i] = np.zeros((self.__state_size, 1))
+
+        print(self.__dual[644])
 
     def _create_cones(self):
         self.__nonleaf_constraint_cone = [None] * self.__num_nonleaf_nodes

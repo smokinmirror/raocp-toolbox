@@ -11,7 +11,7 @@ class TestCache(unittest.TestCase):
     __good_size = 3
 
     @staticmethod
-    def __construct_tree_from_markov():
+    def _construct_tree_from_markov():
         if TestCache.__tree_from_markov is None:
             p = np.array([[0.1, 0.8, 0.1],
                           [0.4, 0.6, 0],
@@ -21,7 +21,7 @@ class TestCache(unittest.TestCase):
             TestCache.__tree_from_markov = core_tree.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @staticmethod
-    def __construct_raocp_from_markov():
+    def _construct_raocp_from_markov():
         if TestCache.__raocp_from_markov is None:
             tree = TestCache.__tree_from_markov
 
@@ -52,8 +52,8 @@ class TestCache(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        TestCache.__construct_tree_from_markov()
-        TestCache.__construct_raocp_from_markov()
+        TestCache._construct_tree_from_markov()
+        TestCache._construct_raocp_from_markov()
 
     def test_inverse_using_cholesky(self):
         random_matrix = np.random.random((TestCache.__good_size, TestCache.__good_size))
