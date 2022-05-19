@@ -84,7 +84,8 @@ class TestOperators(unittest.TestCase):
         TestOperators._construct_operators_from_raocp()
 
     def test_ell(self):
-        random_primal = np.random.
+        pass
+        # random_primal = np.random.
 
 
 if __name__ == '__main__':

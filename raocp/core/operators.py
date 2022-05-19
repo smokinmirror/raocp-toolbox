@@ -16,28 +16,34 @@ class Operator:
         self.__primal_split = primal_split
         self.__dual = initial_dual
         self.__dual_split = dual_split
-        self._create_sections()
 
-    def _create_sections(self):
+        # create initial sections for writing into
+
         # primal
-        self.__states = self.__primal[self.__primal_split[0]: self.__primal_split[1]]  # x
-        self.__controls = self.__primal[self.__primal_split[1]: self.__primal_split[2]]  # u
-        self.__dual_risk_y = self.__primal[self.__primal_split[2]: self.__primal_split[3]]  # y
-        self.__relaxation_s = self.__primal[self.__primal_split[3]: self.__primal_split[4]]  # s
+        self.__states = self.__primal[self.__primal_split[1]: self.__primal_split[2]]  # x
+        self.__controls = self.__primal[self.__primal_split[2]: self.__primal_split[3]]  # u
+        self.__dual_risk_y = self.__primal[self.__primal_split[3]: self.__primal_split[4]]  # y
         self.__relaxation_tau = self.__primal[self.__primal_split[4]: self.__primal_split[5]]  # tau
+        self.__relaxation_s = self.__primal[self.__primal_split[5]: self.__primal_split[6]]  # s
         # dual
-        self.__dual_1 = self.__dual[self.__dual_split[0]: self.__dual_split[1]]
-        self.__dual_2 = self.__dual[self.__dual_split[1]: self.__dual_split[2]]
-        self.__dual_3 = self.__dual[self.__dual_split[2]: self.__dual_split[3]]
-        self.__dual_4 = self.__dual[self.__dual_split[3]: self.__dual_split[4]]
-        self.__dual_5 = self.__dual[self.__dual_split[4]: self.__dual_split[5]]
-        self.__dual_6 = self.__dual[self.__dual_split[5]: self.__dual_split[6]]
-        self.__dual_7 = self.__dual[self.__dual_split[6]: self.__dual_split[7]]
-        self.__dual_8 = self.__dual[self.__dual_split[7]: self.__dual_split[8]]
-        self.__dual_9 = self.__dual[self.__dual_split[8]: self.__dual_split[9]]
+        self.__dual_1 = self.__dual[self.__dual_split[1]: self.__dual_split[2]]
+        self.__dual_2 = self.__dual[self.__dual_split[2]: self.__dual_split[3]]
+        self.__dual_3 = self.__dual[self.__dual_split[3]: self.__dual_split[4]]
+        self.__dual_4 = self.__dual[self.__dual_split[4]: self.__dual_split[5]]
+        self.__dual_5 = self.__dual[self.__dual_split[5]: self.__dual_split[6]]
+        self.__dual_6 = self.__dual[self.__dual_split[6]: self.__dual_split[7]]
+        self.__dual_7 = self.__dual[self.__dual_split[7]: self.__dual_split[8]]
+        self.__dual_8 = self.__dual[self.__dual_split[8]: self.__dual_split[9]]
+        self.__dual_9 = self.__dual[self.__dual_split[9]: self.__dual_split[10]]
 
     def ell(self, modified_primal):
-        self.__primal = modified_primal
+        # create sections for ease of access
+        self.__states = modified_primal[self.__primal_split[1]: self.__primal_split[2]]
+        self.__controls = modified_primal[self.__primal_split[2]: self.__primal_split[3]]
+        self.__dual_risk_y = modified_primal[self.__primal_split[3]: self.__primal_split[4]]
+        self.__relaxation_tau = modified_primal[self.__primal_split[4]: self.__primal_split[5]]
+        self.__relaxation_s = modified_primal[self.__primal_split[5]: self.__primal_split[6]]
+
         for i in range(self.__num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
@@ -59,10 +65,24 @@ class Operator:
             self.__dual_8[i] = half_s
             self.__dual_9[i] = half_s
 
+        # collect modified sections of dual
+        self.__dual = self.__dual_1 + self.__dual_2 + self.__dual_3 + self.__dual_4 + self.__dual_5 + \
+            self.__dual_6 + self.__dual_7 + self.__dual_8 + self.__dual_9
+
         return self.__dual
 
     def ell_transpose(self, modified_dual):
-        self.__dual = modified_dual
+        # create sections for ease of access
+        self.__dual_1 = modified_dual[self.__dual_split[1]: self.__dual_split[2]]
+        self.__dual_2 = modified_dual[self.__dual_split[2]: self.__dual_split[3]]
+        self.__dual_3 = modified_dual[self.__dual_split[3]: self.__dual_split[4]]
+        self.__dual_4 = modified_dual[self.__dual_split[4]: self.__dual_split[5]]
+        self.__dual_5 = modified_dual[self.__dual_split[5]: self.__dual_split[6]]
+        self.__dual_6 = modified_dual[self.__dual_split[6]: self.__dual_split[7]]
+        self.__dual_7 = modified_dual[self.__dual_split[7]: self.__dual_split[8]]
+        self.__dual_8 = modified_dual[self.__dual_split[8]: self.__dual_split[9]]
+        self.__dual_9 = modified_dual[self.__dual_split[9]: self.__dual_split[10]]
+
         for i in range(self.__num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
             stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
@@ -82,5 +102,9 @@ class Operator:
             stage_at_i = self.__raocp.tree.stage_of(i)
             self.__states[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights).T @ self.__dual_7[i]
             self.__relaxation_s[stage_at_i][i] = 0.5 * (self.__dual_8[i] + self.__dual_9[i])
+
+        # collect modified sections of dual
+        self.__primal = self.__states + self.__controls + self.__dual_risk_y + \
+            self.__relaxation_tau + self.__relaxation_s
 
         return self.__primal
