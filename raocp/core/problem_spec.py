@@ -89,7 +89,7 @@ class RAOCP:
         # check same number of items in lists
         if sum((len(ordered_list_of_cost_types),
                 len(ordered_list_of_state_weights),
-                len(ordered_list_of_control_weights))) / 3 != 3:
+                len(ordered_list_of_control_weights))) / 3 != len(ordered_list_of_cost_types):
             raise ValueError("Markovian costs lists provided are not of equal sizes")
         # check that scenario tree is Markovian
         if self.__tree.is_markovian:
@@ -119,6 +119,44 @@ class RAOCP:
             return self
         else:
             raise ValueError("cost type '%s' not supported" % cost_type)
+
+    # Limits -----------------------------------------------------------------------------------------------------------
+
+    def with_markovian_constraints(self, ordered_list_of_constraint_types, ordered_list_of_state_constraint_weights,
+                              ordered_list_of_control_constraint_weights):
+        # check same number of items in lists
+        if sum((len(ordered_list_of_constraint_types),
+                len(ordered_list_of_state_constraint_weights),
+                len(ordered_list_of_control_constraint_weights))) / 3 != len(ordered_list_of_state_constraint_weights):
+            raise ValueError("Markovian constraints lists provided are not of equal sizes")
+        # check that scenario tree is Markovian
+        # if self.__tree.is_markovian:
+        #     for i in range(1, self.__tree.num_nodes):
+        #         if ordered_list_of_constraint_types[self.__tree.value_at_node(i)] == "Rectangle":
+        #             self.__list_of_nonleaf_costs[i] = core_costs.QuadraticNonleaf(
+        #                 ordered_list_of_state_weights[self.__tree.value_at_node(i)],
+        #                 ordered_list_of_control_weights[self.__tree.value_at_node(i)])
+        #         else:
+        #             raise ValueError("cost type '%s' not supported" % ordered_list_of_cost_types[i])
+        #     return self
+        # else:
+        #     raise TypeError("costs provided as Markovian, scenario tree provided is not Markovian")
+
+    def with_all_nonleaf_constraints(self, cost_type, nonleaf_state_weights, control_weights):
+        if cost_type == "Quadratic":
+            for i in range(self.__tree.num_nonleaf_nodes):
+                self.__list_of_nonleaf_costs[i] = core_costs.QuadraticNonleaf(nonleaf_state_weights, control_weights)
+            return self
+        else:
+            raise ValueError("cost type '%s' not supported" % cost_type)
+
+    def with_all_leaf_constraints(self, cost_type, leaf_state_weights):
+        if cost_type == "Quadratic":
+            for i in range(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes):
+                self.__list_of_leaf_costs[i] = core_costs.QuadraticLeaf(leaf_state_weights)
+            return self
+        else:
+            raise ValueError("cost type '%s' not supported" % cost_type)):
 
     # Risks ------------------------------------------------------------------------------------------------------------
 

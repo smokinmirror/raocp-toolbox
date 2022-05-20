@@ -17,6 +17,7 @@ class Solver:
         self.__operator = ops.Operator(self.__raocp,
                                        initial_primal, self.__cache.get_primal_split(),
                                        initial_dual, self.__cache.get_dual_split())
+        self.__initial_state = None
         self.__parameter_1 = None
         self.__parameter_2 = None
         self.__error_0 = None
@@ -24,9 +25,9 @@ class Solver:
         self.__error_2 = None
 
     def primal_k_plus_half(self):
-        dual, _ = self.__cache.get_dual()
+        _, old_dual = self.__cache.get_dual()
         # operate L transpose on dual parts
-        ell_transpose_dual = self.__operator.ell_transpose(dual)
+        ell_transpose_dual = self.__operator.ell_transpose(old_dual)
         # get old primal
         _, old_primal = self.__cache.get_primal()
         # old primal minus (alpha1 times ell_transpose_dual)
@@ -34,7 +35,7 @@ class Solver:
                                                                                   for j in ell_transpose_dual])]
 
     def primal_k_plus_one(self):
-        self.__cache.proximal_of_f(self.__parameter_1)
+        self.__cache.proximal_of_f(self.__initial_state, self.__parameter_1)
 
     def dual_k_plus_half(self):
         # get primal k+1 and k
@@ -75,7 +76,8 @@ class Solver:
         """
         Chambolle-Pock algorithm
         """
-        self.__cache._Cache__primal[0] = initial_state
+        self.__initial_state = initial_state
+        self.__cache.cache_initial_state(self.__initial_state)
         self.__parameter_1 = alpha1
         self.__parameter_2 = alpha2
         current_iteration = 0
@@ -101,7 +103,7 @@ class Solver:
                                  np.linalg.norm(self.__error_2, np.inf)])
 
             # cache variables
-            self.__cache._update_cache()
+            self.__cache.update_cache()
 
             # cache error
             print(current_error)

@@ -33,8 +33,10 @@ class Operator:
         self.__dual_5 = self.__dual[self.__dual_split[5]: self.__dual_split[6]]
         self.__dual_6 = self.__dual[self.__dual_split[6]: self.__dual_split[7]]
         self.__dual_7 = self.__dual[self.__dual_split[7]: self.__dual_split[8]]
-        self.__dual_8 = self.__dual[self.__dual_split[8]: self.__dual_split[9]]
-        self.__dual_9 = self.__dual[self.__dual_split[9]: self.__dual_split[10]]
+        self.__dual_11 = self.__dual[self.__dual_split[11]: self.__dual_split[12]]
+        self.__dual_12 = self.__dual[self.__dual_split[12]: self.__dual_split[13]]
+        self.__dual_13 = self.__dual[self.__dual_split[13]: self.__dual_split[14]]
+        self.__dual_14 = self.__dual[self.__dual_split[14]: self.__dual_split[15]]
 
     def ell(self, modified_primal):
         # create sections for ease of access
@@ -58,16 +60,18 @@ class Operator:
                 self.__dual_5[j] = half_tau
                 self.__dual_6[j] = half_tau
 
+            self.__dual_7[i] = self.__raocp.
+
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
-            self.__dual_7[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights) @ self.__states[i]
+            self.__dual_11[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights) @ self.__states[i]
             half_s = 0.5 * self.__relaxation_s[stage_at_i][i]
-            self.__dual_8[i] = half_s
-            self.__dual_9[i] = half_s
+            self.__dual_12[i] = half_s
+            self.__dual_13[i] = half_s
 
         # collect modified sections of dual
         self.__dual = self.__dual_1 + self.__dual_2 + self.__dual_3 + self.__dual_4 + self.__dual_5 + \
-            self.__dual_6 + self.__dual_7 + self.__dual_8 + self.__dual_9
+            self.__dual_6 + self.__dual_7 + self.__dual_11 + self.__dual_12 + self.__dual_13 + self.__dual_14
 
         return self.__dual
 
@@ -79,9 +83,9 @@ class Operator:
         self.__dual_4 = modified_dual[self.__dual_split[4]: self.__dual_split[5]]
         self.__dual_5 = modified_dual[self.__dual_split[5]: self.__dual_split[6]]
         self.__dual_6 = modified_dual[self.__dual_split[6]: self.__dual_split[7]]
-        self.__dual_7 = modified_dual[self.__dual_split[7]: self.__dual_split[8]]
-        self.__dual_8 = modified_dual[self.__dual_split[8]: self.__dual_split[9]]
-        self.__dual_9 = modified_dual[self.__dual_split[9]: self.__dual_split[10]]
+        self.__dual_11 = modified_dual[self.__dual_split[7]: self.__dual_split[8]]
+        self.__dual_12 = modified_dual[self.__dual_split[8]: self.__dual_split[9]]
+        self.__dual_13 = modified_dual[self.__dual_split[9]: self.__dual_split[10]]
 
         for i in range(self.__num_nonleaf_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
@@ -100,8 +104,8 @@ class Operator:
 
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             stage_at_i = self.__raocp.tree.stage_of(i)
-            self.__states[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights).T @ self.__dual_7[i]
-            self.__relaxation_s[stage_at_i][i] = 0.5 * (self.__dual_8[i] + self.__dual_9[i])
+            self.__states[i] = sqrtm(self.__raocp.leaf_cost_at_node(i).leaf_state_weights).T @ self.__dual_11[i]
+            self.__relaxation_s[stage_at_i][i] = 0.5 * (self.__dual_12[i] + self.__dual_13[i])
 
         # collect modified sections of dual
         self.__primal = self.__states + self.__controls + self.__dual_risk_y + \

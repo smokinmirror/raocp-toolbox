@@ -50,4 +50,4 @@ problem = r.core.RAOCP(scenario_tree=tree)\
 solver = r.core.Solver(problem_spec=problem)
 initial_state = np.array([[2], [1], [-1]])
 alpha_cp = .5
-solver.chock(initial_state=initial_state, alpha1=alpha_cp, alpha2=alpha_cp, max_iters=10, tol=1e-5)
+solver.chock(initial_state=initial_state, alpha1=alpha_cp, alpha2=alpha_cp, max_iters=100, tol=1e-5)
