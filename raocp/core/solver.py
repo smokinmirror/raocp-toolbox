@@ -35,7 +35,7 @@ class Solver:
                                                                                   for j in ell_transpose_dual])]
 
     def primal_k_plus_one(self):
-        self.__cache.proximal_of_f(self.__initial_state, self.__parameter_1)
+        self.__cache.proximal_of_f(self.__parameter_1)
 
     def dual_k_plus_half(self):
         # get primal k+1 and k
