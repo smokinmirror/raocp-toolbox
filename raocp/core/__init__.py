@@ -3,7 +3,7 @@ from .problem_spec import *
 from .costs import *
 from .cones import *
 from .risks import *
-from limits.rectangle import *
 from .operators import *
 from .cache import *
 from .solver import *
+import raocp.core.constraints

@@ -12,11 +12,7 @@ class Solver:
     def __init__(self, problem_spec: ps.RAOCP):
         self.__raocp = problem_spec
         self.__cache = cache.Cache(self.__raocp)
-        _, initial_primal = self.__cache.get_primal()
-        _, initial_dual = self.__cache.get_dual()
-        self.__operator = ops.Operator(self.__raocp,
-                                       initial_primal, self.__cache.get_primal_split(),
-                                       initial_dual, self.__cache.get_dual_split())
+        self.__operator = ops.Operator(self.__cache)
         self.__initial_state = None
         self.__parameter_1 = None
         self.__parameter_2 = None
@@ -25,9 +21,12 @@ class Solver:
         self.__error_2 = None
 
     def primal_k_plus_half(self):
+        # get memory space for ell_transpose_dual
+        ell_transpose_dual, _ = self.__cache.get_primal()
+        # get current dual
         _, old_dual = self.__cache.get_dual()
-        # operate L transpose on dual parts
-        ell_transpose_dual = self.__operator.ell_transpose(old_dual)
+        # operate L transpose on dual and store in ell_transpose_dual
+        self.__operator.ell_transpose(old_dual, ell_transpose_dual)
         # get old primal
         _, old_primal = self.__cache.get_primal()
         # old primal minus (alpha1 times ell_transpose_dual)
@@ -38,12 +37,14 @@ class Solver:
         self.__cache.proximal_of_f(self.__parameter_1)
 
     def dual_k_plus_half(self):
+        # get memory space for ell_transpose_dual
+        ell_primal, _ = self.__cache.get_dual()
         # get primal k+1 and k
         primal, old_primal = self.__cache.get_primal()
         # two times new primal minus old primal
         modified_primal = [a_i - b_i for a_i, b_i in zip([j * 2 for j in primal], old_primal)]
         # operate L on modified primal
-        ell_primal = self.__operator.ell(modified_primal)
+        self.__operator.ell(modified_primal, ell_primal)
         # get old dual
         _, old_dual = self.__cache.get_dual()
         # old dual plus (gamma times ell_primal)
@@ -95,9 +96,9 @@ class Solver:
 
             # calculate error
             self._calculate_errors()
-            self.__error_0 = [np.linalg.norm(a_i, ord=2) for a_i in self.__error_0]
-            self.__error_1 = [np.linalg.norm(a_i, ord=2) for a_i in self.__error_1]
-            self.__error_2 = [np.linalg.norm(a_i, ord=2) for a_i in self.__error_2]
+            self.__error_0 = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__error_0]
+            self.__error_1 = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__error_1]
+            self.__error_2 = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__error_2]
             current_error = max([np.linalg.norm(self.__error_0, np.inf),
                                  np.linalg.norm(self.__error_1, np.inf),
                                  np.linalg.norm(self.__error_2, np.inf)])

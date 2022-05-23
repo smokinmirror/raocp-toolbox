@@ -104,7 +104,7 @@ class Cache:
                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 1,  # start of part 4
                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 2,  # start of part 5
                             self.__num_nonleaf_nodes * 2 + self.__num_nodes * 3,  # start of part 6
-                            self.__num_nonleaf_nodes * 3 + self.__num_nodes * 3,  # start of part 7
+                            self.__num_nonleaf_nodes * 2 + self.__num_nodes * 4,  # start of part 7
                             self.__num_nonleaf_nodes * 3 + self.__num_nodes * 4,  # end of part 7
                             None, None,  # miss 8, 9, 10
                             self.__num_nonleaf_nodes * 3 + self.__num_nodes * 4,  # start of part 11
@@ -113,13 +113,11 @@ class Cache:
                             self.__num_nonleaf_nodes * 3 + self.__num_nodes * 7,  # start of part 14
                             self.__num_nonleaf_nodes * 3 + self.__num_nodes * 8]  # end of part 14
         self.__dual = [np.zeros(1)] * self.__segment_d[-1]
-        for i in range(1, self.__num_nodes):
+        for i in range(self.__num_nodes):
             self.__dual[self.__segment_d[3] + i] = np.zeros((self.__state_size, 1))
             self.__dual[self.__segment_d[4] + i] = np.zeros((self.__control_size, 1))
-            self.__dual[self.__segment_d[7] + i] = np.zeros((self.__state_size, 1))
             if i >= self.__num_nonleaf_nodes:
                 self.__dual[self.__segment_d[11] + i] = np.zeros((self.__state_size, 1))
-                self.__dual[self.__segment_d[14] + i] = np.zeros((self.__state_size, 1))
 
     def _create_cones(self):
         self.__nonleaf_constraint_cone = [None] * self.__num_nonleaf_nodes
@@ -303,6 +301,7 @@ class Cache:
                     .project([self.__dual[self.__segment_d[1] + i], self.__dual[self.__segment_d[2] + i]])
             children_of_i = self.__raocp.tree.children_of(i)
             for j in children_of_i:
+                print(j, self.__dual[self.__segment_d[3]: self.__segment_d[7]][j])
                 self.__dual[self.__segment_d[3]: self.__segment_d[7]][j] = self.__nonleaf_second_order_cone[j]\
                     .project(self.__dual[self.__segment_d[3]: self.__segment_d[7]][j])
 
