@@ -22,7 +22,7 @@ class Solver:
 
     def primal_k_plus_half(self):
         # get memory space for ell_transpose_dual
-        ell_transpose_dual, _ = self.__cache.get_primal()
+        _, ell_transpose_dual = self.__cache.get_primal()
         # get current dual
         _, old_dual = self.__cache.get_dual()
         # operate L transpose on dual and store in ell_transpose_dual
@@ -30,15 +30,16 @@ class Solver:
         # get old primal
         _, old_primal = self.__cache.get_primal()
         # old primal minus (alpha1 times ell_transpose_dual)
-        self.__cache._Cache__primal = [a_i - b_i for a_i, b_i in zip(old_primal, [j * self.__parameter_1
-                                                                                  for j in ell_transpose_dual])]
+        new_primal = [a_i - b_i for a_i, b_i in zip(old_primal, [j * self.__parameter_1
+                                                                 for j in ell_transpose_dual])]
+        self.__cache.set_primal(new_primal)
 
     def primal_k_plus_one(self):
         self.__cache.proximal_of_f(self.__parameter_1)
 
     def dual_k_plus_half(self):
         # get memory space for ell_transpose_dual
-        ell_primal, _ = self.__cache.get_dual()
+        _, ell_primal = self.__cache.get_dual()
         # get primal k+1 and k
         primal, old_primal = self.__cache.get_primal()
         # two times new primal minus old primal
@@ -48,8 +49,9 @@ class Solver:
         # get old dual
         _, old_dual = self.__cache.get_dual()
         # old dual plus (gamma times ell_primal)
-        self.__cache._Cache__dual = [a_i + b_i for a_i, b_i in zip(old_dual, [j * self.__parameter_2
-                                                                              for j in ell_primal])]
+        new_dual = [a_i + b_i for a_i, b_i in zip(old_dual, [j * self.__parameter_2
+                                                             for j in ell_primal])]
+        self.__cache.set_dual(new_dual)
 
     def dual_k_plus_one(self):
         self.__cache.proximal_of_g_conjugate()
@@ -58,20 +60,26 @@ class Solver:
         # in this function, p = primal and d = dual
         p_new, p = self.__cache.get_primal()
         d_new, d = self.__cache.get_dual()
+
         # error 1
         p_minus_p_new = [a_i - b_i for a_i, b_i in zip(p, p_new)]
         p_minus_p_new_over_alpha1 = [a_i / self.__parameter_1 for a_i in p_minus_p_new]
         d_minus_d_new = [a_i - b_i for a_i, b_i in zip(d, d_new)]
-        ell_transpose_d_minus_d_new = self.__operator.ell_transpose(d_minus_d_new)
+        _, ell_transpose_d_minus_d_new = self.__cache.get_primal()  # get memory position
+        self.__operator.ell_transpose(d_minus_d_new, ell_transpose_d_minus_d_new)
         self.__error_1 = [a_i - b_i for a_i, b_i in zip(p_minus_p_new_over_alpha1, ell_transpose_d_minus_d_new)]
+
         # error 2
         d_minus_d_new_over_alpha2 = [a_i / self.__parameter_2 for a_i in d_minus_d_new]
         p_new_minus_p = [a_i - b_i for a_i, b_i in zip(p_new, p)]
-        ell_p_new_minus_p = self.__operator.ell(p_new_minus_p)
+        _, ell_p_new_minus_p = self.__cache.get_dual()  # get memory position
+        self.__operator.ell(p_new_minus_p, ell_p_new_minus_p)
         self.__error_2 = [a_i + b_i for a_i, b_i in zip(d_minus_d_new_over_alpha2, ell_p_new_minus_p)]
+
         # error 0
-        ell_error2 = self.__operator.ell_transpose(self.__error_2)
-        self.__error_0 = [a_i + b_i for a_i, b_i in zip(self.__error_1, ell_error2)]
+        _, ell_transpose_error2 = self.__cache.get_primal()  # get memory position
+        self.__operator.ell_transpose(self.__error_2, ell_transpose_error2)
+        self.__error_0 = [a_i + b_i for a_i, b_i in zip(self.__error_1, ell_transpose_error2)]
 
     def chock(self, initial_state, alpha1=1.0, alpha2=1.0, max_iters=10, tol=1e-5):
         """

@@ -9,7 +9,8 @@ import raocp.core.operators as core_operators
 class TestOperators(unittest.TestCase):
     __tree_from_markov = None
     __raocp_from_markov = None
-    __operator_from_raocp = None
+    __cache_from_raocp = None
+    __operators_from_cache = None
     __good_size = 3
 
     @staticmethod
@@ -52,40 +53,55 @@ class TestOperators(unittest.TestCase):
                 .with_all_risks(risk_type, alpha)
 
     @staticmethod
-    def _construct_operators_from_raocp():
-        if TestOperators.__operator_from_raocp is None:
-            num_nonleaf_nodes = TestOperators.__tree_from_markov.__num_nonleaf_nodes
-            num_nodes = TestOperators.__tree_from_markov.__num_nodes
-            num_stages = TestOperators.__tree_from_markov.__num_stages
-            primal_split = [0,
-                            num_nodes,
-                            num_nodes + num_nonleaf_nodes * 1,
-                            num_nodes + num_nonleaf_nodes * 2,
-                            num_nodes + num_nonleaf_nodes * 2 + (num_stages + 1),
-                            num_nodes + num_nonleaf_nodes * 2 + (num_stages + 1) * 2]
-            dual_split = [0,
-                          num_nonleaf_nodes * 1,
-                          num_nonleaf_nodes * 2,
-                          num_nonleaf_nodes * 2 + num_nodes * 1,
-                          num_nonleaf_nodes * 2 + num_nodes * 2,
-                          num_nonleaf_nodes * 2 + num_nodes * 3,
-                          num_nonleaf_nodes * 2 + num_nodes * 4,
-                          num_nonleaf_nodes * 2 + num_nodes * 5,
-                          num_nonleaf_nodes * 2 + num_nodes * 6,
-                          num_nonleaf_nodes * 2 + num_nodes * 7]
-            TestOperators.__operator_from_raocp = core_operators.Operator(
-                TestOperators.__raocp_from_markov, primal_split, dual_split)
+    def _construct_cache_from_raocp():
+        if TestOperators.__cache_from_raocp is None:
+            TestOperators.__cache_from_raocp = core_cache.Cache(TestOperators.__raocp_from_markov)
+
+    @staticmethod
+    def _construct_operators_from_cache():
+        if TestOperators.__operators_from_cache is None:
+            TestOperators.__operators_from_cache = core_operators.Operator(TestOperators.__cache_from_raocp)
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         TestOperators._construct_tree_from_markov()
         TestOperators._construct_raocp_from_markov()
-        TestOperators._construct_operators_from_raocp()
+        TestOperators._construct_cache_from_raocp()
+        TestOperators._construct_operators_from_cache()
 
-    def test_ell(self):
-        pass
-        # random_primal = np.random.
+    def test_operators(self):
+        # get template of primal and dual for sizes
+        _, primal = TestOperators.__cache_from_raocp.get_primal()
+        _, dual = TestOperators.__cache_from_raocp.get_dual()
+        # setup memory
+        random_primal = primal.copy()
+        random_dual = dual.copy()
+        ell_transpose_dual = primal.copy()
+        ell_primal = dual.copy()
+
+        # create random values for primal
+        for i in range(len(primal)):
+            random_primal[i] = np.random.randn(primal[i].size).reshape((-1, 1))
+
+        # create random values for dual
+        for i in range(len(dual)):
+            random_dual[i] = np.random.randn(dual[i].size).reshape((-1, 1))
+
+        # get ell and ell_transpose
+        TestOperators.__operators_from_cache.ell(random_primal, ell_primal)
+        TestOperators.__operators_from_cache.ell_transpose(random_dual, ell_transpose_dual)
+
+        # get inner products - np.inner takes two row vectors to give a scalar (transposes second argument)
+        inner_primal = 0
+        for i in range(len(primal)):
+            inner_primal += np.inner(random_primal[i].T, ell_transpose_dual[i].T)
+
+        inner_dual = 0
+        for i in range(len(dual)):
+            inner_dual += np.inner(ell_primal[i].T, random_dual[i].T)
+
+        self.assertAlmostEqual(inner_primal[0, 0], inner_dual[0, 0])
 
 
 if __name__ == '__main__':

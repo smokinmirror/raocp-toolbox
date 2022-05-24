@@ -17,10 +17,10 @@ class No(bc.Constraint):
 
     def set_state(self, state_size):
         bc.Constraint.set_state(self, state_size)
-        bc.Constraint.set_state_matrix(self, np.ones(self.state_size).reshape((1, self.state_size)))
+        bc.Constraint.set_state_matrix(self, np.zeros(self.state_size).reshape((1, self.state_size)))
         return self
 
     def set_control(self, control_size):
         bc.Constraint.set_control(self, control_size)
-        bc.Constraint.set_control_matrix(self, np.ones(self.control_size).reshape((1, self.control_size)))
+        bc.Constraint.set_control_matrix(self, np.zeros(self.control_size).reshape((1, self.control_size)))
         return self
