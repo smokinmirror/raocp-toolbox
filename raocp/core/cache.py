@@ -39,7 +39,7 @@ class Cache:
         self.__q = [np.zeros((self.__state_size, 1))] * self.__num_nodes
         self.__K = [np.zeros((self.__state_size, self.__state_size))] * self.__num_nonleaf_nodes
         self.__d = [np.zeros((self.__state_size, 1))] * self.__num_nonleaf_nodes
-        self.__inverse_of_modified_control_dynamics = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+        self.__cholesky_data = [(None, None)] * self.__num_nonleaf_nodes
         self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__num_nodes  # A+BK
 
         # kernel projection
@@ -120,8 +120,8 @@ class Cache:
                             self.__num_nodes,  # u = 2
                             self.__num_nodes + self.__num_nonleaf_nodes * 1,  # y = 3
                             self.__num_nodes + self.__num_nonleaf_nodes * 2,  # tau = 4
-                            self.__num_nodes + self.__num_nonleaf_nodes * 2 + (self.__num_stages + 1),  # s = 5
-                            self.__num_nodes + self.__num_nonleaf_nodes * 2 + (self.__num_stages + 1) * 2]  # end of 5
+                            self.__num_nodes + self.__num_nonleaf_nodes * 2 + self.__num_stages,  # s = 5
+                            self.__num_nodes + self.__num_nonleaf_nodes * 2 + self.__num_stages * 2]  # end of 5
         self.__primal = [np.zeros(1)] * self.__segment_p[-1]
         for i in range(self.__num_nodes):
             self.__primal[self.__segment_p[1] + i] = np.zeros((self.__state_size, 1))
@@ -129,7 +129,7 @@ class Cache:
                 self.__primal[self.__segment_p[2] + i] = np.zeros((self.__control_size, 1))
                 self.__primal[self.__segment_p[3] + i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
 
-        for i in range(self.__num_stages + 1):
+        for i in range(self.__num_stages):
             largest_node_at_stage = max(self.__raocp.tree.nodes_at_stage(i))
             # store variables in their node number inside the stage vector for tau and s
             if i > 0:
@@ -197,12 +197,12 @@ class Cache:
         self.offline_projection_dynamics()
         self.offline_projection_kernel()
 
-    @staticmethod
-    def inverse_using_cholesky(matrix):
-        cholesky_of_matrix = np.linalg.cholesky(matrix)
-        inverse_of_cholesky = np.linalg.inv(cholesky_of_matrix)
-        inverse_of_matrix = inverse_of_cholesky.T @ inverse_of_cholesky
-        return inverse_of_matrix
+    # @staticmethod
+    # def find_cholesky(matrix):
+    #     cholesky_of_matrix = np.linalg.cholesky(matrix)
+    #     inverse_of_cholesky = np.linalg.inv(cholesky_of_matrix)
+    #     inverse_of_matrix = inverse_of_cholesky.T @ inverse_of_cholesky
+    #     return inverse_of_matrix
 
     def offline_projection_dynamics(self):
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
@@ -217,9 +217,10 @@ class Cache:
                 sum_for_k += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
                     @ self.__raocp.state_dynamics_at_node(j)
 
-            self.__inverse_of_modified_control_dynamics[i] = \
-                self.inverse_using_cholesky(np.eye(self.__control_size) + sum_for_modified_control_dynamics)
-            self.__K[i] = - self.__inverse_of_modified_control_dynamics[i] @ sum_for_k
+            self.__cholesky_data[i] = \
+                scipy.linalg.cho_factor(np.eye(self.__control_size) + sum_for_modified_control_dynamics)
+            self.__K[i] = - scipy.linalg.cho_solve(self.__cholesky_data[i], sum_for_k)
+
             sum_for_p = 0
             for j in self.__raocp.tree.children_of(i):
                 self.__sum_of_dynamics[j] = self.__raocp.state_dynamics_at_node(j) \
@@ -267,8 +268,8 @@ class Cache:
             for j in self.__raocp.tree.children_of(i):
                 sum_for_d += self.__raocp.control_dynamics_at_node(j).T @ self.__q[i]
 
-            self.__d[i] = self.__inverse_of_modified_control_dynamics[i] @ \
-                (self.__primal[self.__segment_p[2] + i] - sum_for_d)
+            self.__d[i] = scipy.linalg.cho_solve(self.__cholesky_data[i],
+                                                 self.__primal[self.__segment_p[2] + i] - sum_for_d)
             sum_for_q = 0
             for j in self.__raocp.tree.children_of(i):
                 sum_for_q += self.__sum_of_dynamics[j].T @ \

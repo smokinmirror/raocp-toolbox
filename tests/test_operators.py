@@ -70,7 +70,11 @@ class TestOperators(unittest.TestCase):
         TestOperators._construct_cache_from_raocp()
         TestOperators._construct_operators_from_cache()
 
-    def test_operators(self):
+    @staticmethod
+    def setup():
+        # get primal and dual segments
+        segments_p = TestOperators.__cache_from_raocp.get_primal_segments()
+        segments_d = TestOperators.__cache_from_raocp.get_dual_segments()
         # get template of primal and dual for sizes
         _, primal = TestOperators.__cache_from_raocp.get_primal()
         _, dual = TestOperators.__cache_from_raocp.get_dual()
@@ -79,29 +83,230 @@ class TestOperators(unittest.TestCase):
         random_dual = dual.copy()
         ell_transpose_dual = primal.copy()
         ell_primal = dual.copy()
+        return segments_p, segments_d, random_primal, random_dual, ell_transpose_dual, ell_primal
 
-        # create random values for primal
-        for i in range(len(primal)):
-            random_primal[i] = np.random.randn(primal[i].size).reshape((-1, 1))
-
-        # create random values for dual
-        for i in range(len(dual)):
-            random_dual[i] = np.random.randn(dual[i].size).reshape((-1, 1))
-
+    @staticmethod
+    def inner_product(random_primal, ell_transpose_dual, random_dual, ell_primal):
         # get ell and ell_transpose
         TestOperators.__operators_from_cache.ell(random_primal, ell_primal)
         TestOperators.__operators_from_cache.ell_transpose(random_dual, ell_transpose_dual)
 
         # get inner products - np.inner takes two row vectors to give a scalar (transposes second argument)
         inner_primal = 0
-        for i in range(len(primal)):
+        for i in range(len(random_primal)):
             inner_primal += np.inner(random_primal[i].T, ell_transpose_dual[i].T)
 
         inner_dual = 0
-        for i in range(len(dual)):
+        for i in range(len(random_dual)):
             inner_dual += np.inner(ell_primal[i].T, random_dual[i].T)
 
-        self.assertAlmostEqual(inner_primal[0, 0], inner_dual[0, 0])
+        return inner_primal, inner_dual
+
+    # def test_y_and_1(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     y = 3
+    #     for i in range(seg_prim[y], seg_prim[y+1]):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 1
+    #     for i in range(seg_dual[eta], seg_dual[eta+1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_s_nonleaf_and_2(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     s = 5
+    #     for i in range(seg_prim[s], seg_prim[s + 1] - 1):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 2
+    #     for i in range(seg_dual[eta], seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_x_nonleaf_and_3(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     x = 1
+    #     for i in range(seg_prim[x], seg_prim[x] + self.__tree_from_markov.num_nonleaf_nodes):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 3
+    #     for i in range(seg_dual[eta] + 1, seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_u_and_4(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     u = 2
+    #     for i in range(seg_prim[u], seg_prim[u] + self.__tree_from_markov.num_nonleaf_nodes):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 4
+    #     for i in range(seg_dual[eta] + 1, seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_t_and_5(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     t = 4
+    #     for i in range(seg_prim[t], seg_prim[t + 1]):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 5
+    #     for i in range(seg_dual[eta] + 1, seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_t_and_6(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     t = 4
+    #     for i in range(seg_prim[t], seg_prim[t + 1]):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 6
+    #     for i in range(seg_dual[eta] + 1, seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_x_nonleaf_and_7(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     x = 1
+    #     for i in range(seg_prim[x], seg_prim[x] + self.__tree_from_markov.num_nonleaf_nodes):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 7
+    #     for i in range(seg_dual[eta], seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_u_and_7(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     u = 2
+    #     for i in range(seg_prim[u], seg_prim[u] + self.__tree_from_markov.num_nonleaf_nodes):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 7
+    #     for i in range(seg_dual[eta], seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_x_leaf_and_11(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     x = 1
+    #     for i in range(seg_prim[x] + self.__tree_from_markov.num_nonleaf_nodes, seg_prim[x + 1]):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 11
+    #     for i in range(seg_dual[eta] + self.__tree_from_markov.num_nonleaf_nodes, seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+
+    def test_s_leaf_and_12(self):
+        seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+
+        # create random values for primal
+        s = 5
+        for i in range(seg_prim[s + 1] - 1, seg_prim[s + 1]):
+            rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+
+        # create random values for dual
+        eta = 12
+        for i in range(seg_dual[eta] + self.__tree_from_markov.num_nonleaf_nodes, seg_dual[eta + 1]):
+            rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+
+        inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+        self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+
+    def test_s_leaf_and_13(self):
+        seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+
+        # create random values for primal
+        s = 5
+        for i in range(seg_prim[s + 1] - 1, seg_prim[s + 1]):
+            rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+
+        # create random values for dual
+        eta = 13
+        for i in range(seg_dual[eta] + self.__tree_from_markov.num_nonleaf_nodes, seg_dual[eta + 1]):
+            rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+
+        inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+        self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+
+    # def test_x_leaf_and_14(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     x = 1
+    #     for i in range(seg_prim[x] + self.__tree_from_markov.num_nonleaf_nodes, seg_prim[x + 1]):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     eta = 14
+    #     for i in range(seg_dual[eta] + self.__tree_from_markov.num_nonleaf_nodes, seg_dual[eta + 1]):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    #
+    # def test_operators(self):
+    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+    #
+    #     # create random values for primal
+    #     for i in range(len(rand_prim)):
+    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+    #
+    #     # create random values for dual
+    #     for i in range(len(rand_dual)):
+    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+    #
+    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
 
 
 if __name__ == '__main__':

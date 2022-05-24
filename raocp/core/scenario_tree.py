@@ -75,7 +75,7 @@ class ScenarioTree:
 
     @property
     def num_nonleaf_nodes(self):
-        return np.sum(self.__stages < self.num_stages)
+        return np.sum(self.__stages < self.num_stages - 1)
 
     @property
     def num_nodes(self):
@@ -87,9 +87,9 @@ class ScenarioTree:
     @property
     def num_stages(self):
         """
-        :return: number of stages
+        :return: number of stages including zero stage
         """
-        return self.__stages[-1]
+        return self.__stages[-1] + 1
 
     def ancestor_of(self, node_idx):
         """
