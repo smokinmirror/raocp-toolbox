@@ -21,7 +21,7 @@ class Cache:
         self.__dual_cache = []
         # self._primal = None
         self.__old_primal = None
-        self.__dual = None
+        # self.__dual = None
         self.__old_dual = None
         self.__initial_state = None
 
@@ -117,24 +117,17 @@ class Cache:
 
     def _create_primal(self):
         self.__segment_p = [None, 0,  # x = 1
-                            self.__num_nodes,  # u = 2
-                            self.__num_nodes + self.__num_nonleaf_nodes * 1,  # y = 3
-                            self.__num_nodes + self.__num_nonleaf_nodes * 2,  # tau = 4
-                            self.__num_nodes + self.__num_nonleaf_nodes * 2 + self.__num_stages,  # s = 5
-                            self.__num_nodes + self.__num_nonleaf_nodes * 2 + self.__num_stages * 2]  # end of 5
-        self.__primal = [np.zeros(1)] * self.__segment_p[-1]
+                            self.__num_nodes * 1,  # u = 2
+                            self.__num_nodes * 1 + self.__num_nonleaf_nodes * 1,  # y = 3
+                            self.__num_nodes * 1 + self.__num_nonleaf_nodes * 2,  # tau = 4
+                            self.__num_nodes * 2 + self.__num_nonleaf_nodes * 2,  # s = 5
+                            self.__num_nodes * 3 + self.__num_nonleaf_nodes * 2]  # end of 5
+        self.__primal = [np.zeros((1, 1))] * self.__segment_p[-1]
         for i in range(self.__num_nodes):
             self.__primal[self.__segment_p[1] + i] = np.zeros((self.__state_size, 1))
             if i < self.__num_nonleaf_nodes:
                 self.__primal[self.__segment_p[2] + i] = np.zeros((self.__control_size, 1))
                 self.__primal[self.__segment_p[3] + i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
-
-        for i in range(self.__num_stages):
-            largest_node_at_stage = max(self.__raocp.tree.nodes_at_stage(i))
-            # store variables in their node number inside the stage vector for tau and s
-            if i > 0:
-                self.__primal[self.__segment_p[4] + i] = np.zeros((largest_node_at_stage + 1, 1))
-            self.__primal[self.__segment_p[5] + i] = np.zeros((largest_node_at_stage + 1, 1))
 
     def _create_dual(self):
         # parts 3, 4, 5 and 6 of parent node put in children nodes for simple storage
@@ -196,13 +189,6 @@ class Cache:
         """
         self.offline_projection_dynamics()
         self.offline_projection_kernel()
-
-    # @staticmethod
-    # def find_cholesky(matrix):
-    #     cholesky_of_matrix = np.linalg.cholesky(matrix)
-    #     inverse_of_cholesky = np.linalg.inv(cholesky_of_matrix)
-    #     inverse_of_matrix = inverse_of_cholesky.T @ inverse_of_cholesky
-    #     return inverse_of_matrix
 
     def offline_projection_dynamics(self):
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
@@ -292,26 +278,23 @@ class Cache:
         :returns: nothing
         """
         for i in range(self.__num_nonleaf_nodes):
-            stage_at_children_of_i = self.__raocp.tree.stage_of(i) + 1
             children_of_i = self.__raocp.tree.children_of(i)
-            # get children of i out of next stage of s and tau
-            s_stack = self.__primal[self.__segment_p[5] + stage_at_children_of_i][children_of_i[0]]
-            tau_stack = self.__primal[self.__segment_p[4] + stage_at_children_of_i][children_of_i[0]]
+            # get children of i out of next stage of tau and s
+            tau_stack = self.__primal[self.__segment_p[4] + children_of_i[0]]
+            s_stack = self.__primal[self.__segment_p[5] + children_of_i[0]]
             if children_of_i.size > 1:
                 for j in np.delete(children_of_i, 0):
-                    s_stack = np.vstack((s_stack,
-                                         self.__primal[self.__segment_p[5] + stage_at_children_of_i][j]))
-                    tau_stack = np.vstack((tau_stack,
-                                           self.__primal[self.__segment_p[4] + stage_at_children_of_i][j]))
+                    tau_stack = np.vstack((tau_stack, self.__primal[self.__segment_p[4] + j]))
+                    s_stack = np.vstack((s_stack, self.__primal[self.__segment_p[5] + j]))
 
             full_stack = np.vstack((self.__primal[self.__segment_p[3] + i], s_stack, tau_stack))
             projection = self.__kernel_projection_operator[i] @ full_stack
             self.__primal[self.__segment_p[3] + i] = projection[0: self.__primal[self.__segment_p[3] + i].size]
             for k in range(children_of_i.size):
-                self.__primal[self.__segment_p[5] + stage_at_children_of_i][children_of_i[k]] = \
-                    projection[self.__primal[self.__segment_p[3] + i].size + k]
-                self.__primal[self.__segment_p[4] + stage_at_children_of_i][children_of_i[k]] = \
-                    projection[self.__primal[self.__segment_p[3] + i].size + children_of_i.size + k]
+                self.__primal[self.__segment_p[5] + children_of_i[k]] = \
+                    (projection[self.__primal[self.__segment_p[3] + i].size + k]).reshape(-1, 1)
+                self.__primal[self.__segment_p[4] + children_of_i[k]] = \
+                    (projection[self.__primal[self.__segment_p[3] + i].size + children_of_i.size + k]).reshape(-1, 1)
 
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
