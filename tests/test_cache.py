@@ -55,12 +55,6 @@ class TestCache(unittest.TestCase):
         TestCache._construct_tree_from_markov()
         TestCache._construct_raocp_from_markov()
 
-    def test_inverse_using_cholesky(self):
-        random_matrix = np.random.random((TestCache.__good_size, TestCache.__good_size))
-        positive_definite_matrix = random_matrix @ random_matrix.T
-        inverse = TestCache.__cache.inverse_using_cholesky(positive_definite_matrix)
-        np.testing.assert_allclose(inverse @ positive_definite_matrix, np.eye(TestCache.__good_size), atol=1e-12)
-
     def test_linear_operator_and_adjoint(self):
         cache = core_cache.Cache(TestCache.__raocp_from_markov)
 
