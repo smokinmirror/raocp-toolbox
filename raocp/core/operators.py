@@ -80,8 +80,11 @@ class Operator:
                     (sqrtm(self.__raocp.nonleaf_cost_at_node(j).control_weights) @ dual_4[j])
                 output_primal[self.__segment_p[4] + j] = 0.5 * (dual_5[j] + dual_6[j])
 
+        print(dual_13)
+        print("---")
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             output_primal[self.__segment_p[1] + i] = \
                 (self.__raocp.leaf_constraint_at_node(i).state_matrix.T @ dual_14[i]).reshape(-1, 1) + \
                 sqrtm(self.__raocp.leaf_cost_at_node(i).state_weights) @ dual_11[i]
+            print(f"i = {i}, {dual_13[i]}")
             output_primal[self.__segment_p[5] + i] = 0.5 * (dual_12[i] + dual_13[i])
