@@ -60,7 +60,7 @@ class Operator:
         dual_7 = input_dual[self.__segment_d[7]: self.__segment_d[8]]
         dual_11 = input_dual[self.__segment_d[11]: self.__segment_d[12]]
         dual_12 = input_dual[self.__segment_d[12]: self.__segment_d[13]]
-        dual_13 = input_dual[self.__segment_d[12]: self.__segment_d[14]]
+        dual_13 = input_dual[self.__segment_d[13]: self.__segment_d[14]]
         dual_14 = input_dual[self.__segment_d[14]: self.__segment_d[15]]
 
         for i in range(self.__num_nonleaf_nodes):

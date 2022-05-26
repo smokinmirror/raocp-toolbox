@@ -123,12 +123,12 @@ class TestOperators(unittest.TestCase):
 
         # create random values for primal
         s = 5
-        for i in range(seg_prim[s], seg_prim[s + 1] - 1):
+        for i in range(seg_prim[s] + 1, seg_prim[s] + self.__tree_from_markov.num_nonleaf_nodes):
             rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
 
         # create random values for dual
         eta = 2
-        for i in range(seg_dual[eta], seg_dual[eta + 1]):
+        for i in range(seg_dual[eta] + 1, seg_dual[eta] + self.__tree_from_markov.num_nonleaf_nodes):
             rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
 
         inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
@@ -144,7 +144,7 @@ class TestOperators(unittest.TestCase):
 
         # create random values for dual
         eta = 3
-        for i in range(seg_dual[eta] + 1, seg_dual[eta + 1]):
+        for i in range(seg_dual[eta], seg_dual[eta + 1]):
             rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
 
         inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
@@ -160,7 +160,7 @@ class TestOperators(unittest.TestCase):
 
         # create random values for dual
         eta = 4
-        for i in range(seg_dual[eta] + 1, seg_dual[eta + 1]):
+        for i in range(seg_dual[eta], seg_dual[eta + 1]):
             rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
 
         inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
@@ -171,7 +171,7 @@ class TestOperators(unittest.TestCase):
 
         # create random values for primal
         t = 4
-        for i in range(seg_prim[t], seg_prim[t + 1]):
+        for i in range(seg_prim[t] + 1, seg_prim[t + 1]):
             rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
 
         # create random values for dual
@@ -187,7 +187,7 @@ class TestOperators(unittest.TestCase):
 
         # create random values for primal
         t = 4
-        for i in range(seg_prim[t], seg_prim[t + 1]):
+        for i in range(seg_prim[t] + 1, seg_prim[t + 1]):
             rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
 
         # create random values for dual
@@ -219,7 +219,7 @@ class TestOperators(unittest.TestCase):
 
         # create random values for primal
         u = 2
-        for i in range(seg_prim[u], seg_prim[u] + self.__tree_from_markov.num_nonleaf_nodes):
+        for i in range(seg_prim[u], seg_prim[u + 1]):
             rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
 
         # create random values for dual
@@ -248,17 +248,31 @@ class TestOperators(unittest.TestCase):
 
     def test_s_leaf_and_12(self):
         seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+
         # create random values for primal
         s = 5
         for i in range(seg_prim[s] + self.__tree_from_markov.num_nonleaf_nodes, seg_prim[s + 1]):
             rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
 
         # create random values for dual
-        eta = 12
-        for i in range(seg_dual[eta] + self.__tree_from_markov.num_nonleaf_nodes, seg_dual[eta + 1]):
-            rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+        peta = [12, 13]
+        for eta in peta:
+            for i in range(seg_dual[eta] + self.__tree_from_markov.num_nonleaf_nodes, seg_dual[eta + 1]):
+                rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
 
-        inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+        # get ell and ell_transpose
+        TestOperators.__operators_from_cache.ell(rand_prim, ell_prim)
+        TestOperators.__operators_from_cache.ell_transpose(rand_dual, ell_t_dual)
+
+        # get inner products - np.inner takes two row vectors to give a scalar (transposes second argument)
+        inner_prim = 0
+        for i in range(len(rand_prim)):
+            inner_prim += np.inner(rand_prim[i].T, ell_t_dual[i].T)
+
+        inner_dual = 0
+        for i in range(len(rand_dual)):
+            inner_dual += np.inner(ell_prim[i].T, rand_dual[i].T)
+
         self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
 
     def test_s_leaf_and_13(self):
@@ -293,19 +307,19 @@ class TestOperators(unittest.TestCase):
         inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
         self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
 
-    # def test_operators(self):
-    #     seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
-    #
-    #     # create random values for primal
-    #     for i in range(len(rand_prim)):
-    #         rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
-    #
-    #     # create random values for dual
-    #     for i in range(len(rand_dual)):
-    #         rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
-    #
-    #     inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
-    #     self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
+    def test_operators(self):
+        seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+
+        # create random values for primal
+        for i in range(len(rand_prim)):
+            rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+
+        # create random values for dual
+        for i in range(len(rand_dual)):
+            rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+
+        inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
+        self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
 
 
 if __name__ == '__main__':
