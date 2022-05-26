@@ -25,7 +25,7 @@ class RectangleNonleaf(bc.Constraint):
         self.__state_matrix = np.ones(self.__state_size).reshape((self.__state_size, 1))
         self.__control_matrix = np.ones(self.__control_size).reshape((self.__control_size, 1))
 
-    def project(self, state, control):
+    def project(self, state, control=None):
         pass
 
     def __str__(self):

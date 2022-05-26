@@ -11,6 +11,9 @@ class Constraint:
         self.__state_matrix = np.zeros((0, 0))
         self.__control_matrix = np.zeros((0, 0))
 
+    def is_active(self):
+        pass
+
     def project(self, state, control=None):
         pass
 

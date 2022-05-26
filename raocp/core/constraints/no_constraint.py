@@ -9,11 +9,8 @@ class No(bc.Constraint):
     def __init__(self):
         super().__init__()
 
-    def project(self, state, control=None):
-        if control is None:
-            return state
-        else:
-            return state, control
+    def is_active(self):
+        return False
 
     def set_state(self, state_size):
         bc.Constraint.set_state(self, state_size)

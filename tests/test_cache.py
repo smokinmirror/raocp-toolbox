@@ -55,8 +55,11 @@ class TestCache(unittest.TestCase):
         TestCache._construct_tree_from_markov()
         TestCache._construct_raocp_from_markov()
 
-    def test_linear_operator_and_adjoint(self):
-        cache = core_cache.Cache(TestCache.__raocp_from_markov)
+    def test_proximal_of_primal(self):
+        pass
+
+    def test_proximal_of_dual(self):
+        pass
 
 
 if __name__ == '__main__':
