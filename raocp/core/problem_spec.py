@@ -19,7 +19,7 @@ class RAOCP:
         self.__tree = scenario_tree
         self.__num_nodes = self.__tree.num_nodes
         self.__num_nonleaf_nodes = self.__tree.num_nonleaf_nodes
-        self.__list_of_dynamics = [core_dynamics.Dynamics] * self.__num_nodes
+        self.__list_of_dynamics = [None] + [core_dynamics.Dynamics] * self.__num_nodes
         self.__list_of_nonleaf_costs = [None] * self.__num_nodes
         self.__list_of_leaf_costs = [None] * self.__num_nodes
         self.__list_of_nonleaf_constraints = [None] * self.__num_nodes
