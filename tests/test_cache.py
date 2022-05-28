@@ -49,17 +49,28 @@ class TestCache(unittest.TestCase):
                 .with_all_leaf_costs(cost_type, leaf_state_weight) \
                 .with_all_risks(risk_type, alpha)
 
+    @staticmethod
+    def _construct_mock_cache():
+        mock_cache = core_cache.Cache(TestCache.__raocp_from_markov)
+        primal_segments = mock_cache.get_primal_segments()
+        dual_segments = mock_cache.get_dual_segments()
+        return mock_cache, primal_segments, dual_segments
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         TestCache._construct_tree_from_markov()
         TestCache._construct_raocp_from_markov()
 
-    def test_proximal_of_primal(self):
-        pass
+    def test_proximal_of_relaxation_s_at_stage_zero(self):
+        mock_cache, seg_p, seg_d = self._construct_mock_cache()
+        # s = segment 5
+        s = 5
+        parameter = np.random.randn(mock_cache._Cache__primal[seg_p[s]].size)
+        mock_cache.proximal_of_relaxation_s_at_stage_zero(parameter)
+        self.assertEqual(-parameter, mock_cache._Cache__primal[seg_p[s]][0])
 
-    def test_proximal_of_dual(self):
-        pass
+    def test_
 
 
 if __name__ == '__main__':

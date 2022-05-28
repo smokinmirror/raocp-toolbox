@@ -235,7 +235,7 @@ class Cache:
         self.project_on_dynamics()
         self.project_on_kernel()
 
-    def proximal_of_relaxation_s_at_stage_zero(self, solver_parameter=1.0):
+    def proximal_of_relaxation_s_at_stage_zero(self, solver_parameter):
         """
         proximal operator of alpha * identity on s0
         """
