@@ -105,13 +105,9 @@ class RAOCP:
         # load "No Constraint" into constraints list with state and control sizes
         for i in range(self.__num_nodes):
             if i < self.__num_nonleaf_nodes:
-                self.__list_of_nonleaf_constraints[i] = core_constraints.No()\
-                    .set_state(ordered_list_of_state_dynamics[0].shape[1])\
-                    .set_control(ordered_list_of_control_dynamics[0].shape[1])
+                self.__list_of_nonleaf_constraints[i] = core_constraints.No()
             if i >= self.__num_nonleaf_nodes:
-                self.__list_of_leaf_constraints[i] = core_constraints.No() \
-                    .set_state(ordered_list_of_state_dynamics[0].shape[1]) \
-                    .set_control(ordered_list_of_control_dynamics[0].shape[1])
+                self.__list_of_leaf_constraints[i] = core_constraints.No()
 
         # check that scenario tree provided is Markovian
         if self.__tree.is_markovian:
