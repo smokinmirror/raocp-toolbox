@@ -63,21 +63,45 @@ class TestCache(unittest.TestCase):
         TestCache._construct_tree_from_markov()
         TestCache._construct_raocp_from_markov()
 
+    def test_cache_initial_state(self):
+        mock_cache, seg_p, seg_d = self._construct_mock_cache()
+        _, prim = mock_cache.get_primal()  # template
+        prim[seg_p[1]] = np.random.randn(prim[seg_p[1]].size).reshape(-1, 1)
+        mock_cache.cache_initial_state(prim[seg_p[1]])
+        _, old_prim = mock_cache.get_primal()  # template
+        self.assertTrue(np.array_equal(prim[seg_p[1]], mock_cache._Cache__initial_state))
+        self.assertTrue(np.array_equal(prim[seg_p[1]], old_prim[0]))
+        self.assertTrue(np.array_equal(prim[seg_p[1]], mock_cache._Cache__primal_cache[0][0]))
+
     def test_proximal_of_relaxation_s_at_stage_zero(self):
         mock_cache, seg_p, seg_d = self._construct_mock_cache()
         # s = segment 5
         s = 5
-        parameter = np.random.randn(mock_cache._Cache__primal[seg_p[s]].size)
+        _, prim = mock_cache.get_primal()  # get old primal as template
+        parameter = np.random.randn(prim[seg_p[s]].size)
         mock_cache.proximal_of_relaxation_s_at_stage_zero(parameter)
-        self.assertEqual(-parameter, mock_cache._Cache__primal[seg_p[s]][0])
+        prim, _ = mock_cache.get_primal()  # get modified primal
+        self.assertEqual(-parameter, prim[seg_p[s]][0])
 
     def test_project_on_dynamics(self):
         mock_cache, seg_p, _ = self._construct_mock_cache()
-
-        # solve with cvxpy first
         _, prim = mock_cache.get_primal()  # template
         for i in range(seg_p[1], seg_p[3]):
-            prim[i] = np.random.randn(prim[i].size)
+            prim[i] = np.random.randn(prim[i].size).reshape(-1, 1)
+
+        # solve with dp
+        mock_cache.cache_initial_state(prim[seg_p[1]])
+        mock_cache.set_primal(prim)
+        mock_cache.project_on_dynamics()
+        dp_result, _ = mock_cache.get_primal()
+        x_dp = np.asarray(prim[seg_p[1]: seg_p[2]])
+        u_dp = np.asarray(prim[seg_p[2]: seg_p[3]])
+        # ensure x0 stayed the same
+        self.assertTrue(np.allclose(prim[seg_p[1]], x_dp[0]))
+
+        # solve with cvxpy
+        for i in range(seg_p[1], seg_p[3]):
+            prim[i] = prim[i].reshape(-1,)
 
         x_bar = np.asarray(prim[seg_p[1]: seg_p[2]])
         u_bar = np.asarray(prim[seg_p[2]: seg_p[3]])
@@ -87,41 +111,30 @@ class TestCache(unittest.TestCase):
         u = cp.Variable(u_bar.shape)
         # sum problem objectives and concatenate constraints
         cost = 0
-        constraints = [x[0, :] == x_bar[0, :]]
+        constraints = [x[0] == x_bar[0]]
         # nonleaf nodes
         for node in range(n):
-            cost += cp.sum_squares(x[node, :] - x_bar[node, :]) + cp.sum_squares(u[node, :] - u_bar[node, :])
+            cost += cp.sum_squares(x[node] - x_bar[node]) + cp.sum_squares(u[node] - u_bar[node])
             for ch in self.__tree_from_markov.children_of(node):
-                constraints += [x[ch, :] ==
-                                self.__raocp_from_markov.state_dynamics_at_node(ch) @ x[node, :] +
-                                self.__raocp_from_markov.control_dynamics_at_node(ch) @ u[node, :]]
+                constraints += [x[ch] ==
+                                self.__raocp_from_markov.state_dynamics_at_node(ch) @ x[node] +
+                                self.__raocp_from_markov.control_dynamics_at_node(ch) @ u[node]]
 
         # leaf nodes
         for node in range(n, N):
-            cost += cp.sum_squares(x[node, :] - x_bar[node, :])
+            cost += cp.sum_squares(x[node] - x_bar[node])
 
         problem = cp.Problem(cp.Minimize(cost), constraints)
         problem.solve(solver=cp.ECOS)
         # ensure x0 stayed the same
-        self.assertTrue(np.allclose(prim[seg_p[1]], x.value[0, :]))
-
-        # solve with dp
-        for i in range(seg_p[1], seg_p[3]):
-            prim[i] = prim[i].reshape(-1, 1)
-
-        mock_cache.cache_initial_state(prim[seg_p[1]])
-        mock_cache.set_primal(prim)
-        mock_cache.project_on_dynamics()
-        dp_result, _ = mock_cache.get_primal()
-        x_dp = np.asarray(prim[seg_p[1]: seg_p[2]])
-        u_dp = np.asarray(prim[seg_p[2]: seg_p[3]])
-        # ensure x0 stayed the same
-        self.assertTrue(np.allclose(prim[seg_p[1]], x_dp[0, :]))
+        self.assertTrue(np.allclose(prim[seg_p[1]], x.value[0]))
 
         # check solutions are similar
         node = 1
-        print(f"cvxpy x = {u.value[node]}\n"
-              f"dp x = {u_dp[node].T}")
+        print(f"cvxpy x = {x.value[node]}\n"
+              f"dp x = {x_dp[node].T}")
+        print(f"cvxpy obj = {[node]}\n"
+              f"dp obj = {u_dp[node].T}")
         self.assertTrue(np.allclose(x.value, x_dp[:, :, 0]))
         self.assertTrue(np.allclose(u.value, u_dp[:, :, 0]))
 

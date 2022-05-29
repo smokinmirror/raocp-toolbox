@@ -243,7 +243,7 @@ class Cache:
 
     def project_on_dynamics(self):
         """
-        use dynamic programming to project (x, u) onto the set S_1
+        use dynamic programming to project (x, u) onto the dynamics set S_1
         :returns: nothing
         """
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
@@ -274,7 +274,7 @@ class Cache:
 
     def project_on_kernel(self):
         """
-        use kernels to project (y, s, tau) onto the set S_2
+        use kernels to project (y, tau, s) onto the kernel set S_2
         :returns: nothing
         """
         for i in range(self.__num_nonleaf_nodes):
