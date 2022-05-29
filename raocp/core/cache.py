@@ -19,9 +19,7 @@ class Cache:
         self.__control_size = self.__raocp.control_dynamics_at_node(1).shape[1]
         self.__primal_cache = []
         self.__dual_cache = []
-        # self._primal = None
         self.__old_primal = None
-        # self.__dual = None
         self.__old_dual = None
         self.__initial_state = None
 
@@ -298,30 +296,20 @@ class Cache:
 
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
-    def add_halves(self):
-        self.__dual[self.__segment_d[5]: self.__segment_d[6]] = [j - 0.5 for j in self.__dual[self.__segment_d[5]:
-                                                                                              self.__segment_d[6]]]
-        self.__dual[self.__segment_d[6]: self.__segment_d[7]] = [j + 0.5 for j in self.__dual[self.__segment_d[6]:
-                                                                                              self.__segment_d[7]]]
-        self.__dual[self.__segment_d[12]: self.__segment_d[13]] = [j - 0.5 for j in self.__dual[self.__segment_d[12]:
-                                                                                                self.__segment_d[13]]]
-        self.__dual[self.__segment_d[13]: self.__segment_d[14]] = [j + 0.5 for j in self.__dual[self.__segment_d[13]:
-                                                                                                self.__segment_d[14]]]
+    def proximal_of_g_conjugate(self, solver_parameter):
+        self.modify_dual(solver_parameter)
+        self.project_on_constraints(solver_parameter)
 
-    def subtract_halves(self):
-        self.__dual[self.__segment_d[5]: self.__segment_d[6]] = [j + 0.5 for j in self.__dual[self.__segment_d[5]:
-                                                                                              self.__segment_d[6]]]
-        self.__dual[self.__segment_d[6]: self.__segment_d[7]] = [j - 0.5 for j in self.__dual[self.__segment_d[6]:
-                                                                                              self.__segment_d[7]]]
-        self.__dual[self.__segment_d[12]: self.__segment_d[13]] = [j + 0.5 for j in self.__dual[self.__segment_d[12]:
-                                                                                                self.__segment_d[13]]]
-        self.__dual[self.__segment_d[13]: self.__segment_d[14]] = [j - 0.5 for j in self.__dual[self.__segment_d[13]:
-                                                                                                self.__segment_d[14]]]
+    def modify_dual(self, solver_parameter):
+        # algo 6
+        for i in range(len(self.__dual)):
+            self.__dual[i] = self.__dual[i] / solver_parameter
 
-    def proximal_of_g_conjugate(self):
-        # precomposition add halves
         self.add_halves()
-        # proximal gbar (cone projections)
+
+    def project_on_constraints(self, solver_parameter):
+        # algo 7
+        dual_copy = self.__dual.copy()
         for i in range(self.__num_nonleaf_nodes):
             [self.__dual[self.__segment_d[1] + i], self.__dual[self.__segment_d[2] + i]] = \
                 self.__nonleaf_constraint_cone[i]\
@@ -355,7 +343,24 @@ class Cache:
             for k in range(start, end + 1):
                 self.__dual[self.__segment_d[k] + i] = soc_projection[size[k - 1]: size[k]]
 
-        # precomposition subtract halves
-        self.subtract_halves()
-        # Moreau decomposition
-        self.__dual = [a_i - b_i for a_i, b_i in zip(self.__old_dual, self.__dual)]
+        self.__dual = [solver_parameter * (a_i - b_i) for a_i, b_i in zip(dual_copy, self.__dual)]
+
+    def add_halves(self):
+        self.__dual[self.__segment_d[5]: self.__segment_d[6]] = [j - 0.5 for j in self.__dual[self.__segment_d[5]:
+                                                                                              self.__segment_d[6]]]
+        self.__dual[self.__segment_d[6]: self.__segment_d[7]] = [j + 0.5 for j in self.__dual[self.__segment_d[6]:
+                                                                                              self.__segment_d[7]]]
+        self.__dual[self.__segment_d[12]: self.__segment_d[13]] = [j - 0.5 for j in self.__dual[self.__segment_d[12]:
+                                                                                                self.__segment_d[13]]]
+        self.__dual[self.__segment_d[13]: self.__segment_d[14]] = [j + 0.5 for j in self.__dual[self.__segment_d[13]:
+                                                                                                self.__segment_d[14]]]
+
+    def subtract_halves(self):
+        self.__dual[self.__segment_d[5]: self.__segment_d[6]] = [j + 0.5 for j in self.__dual[self.__segment_d[5]:
+                                                                                              self.__segment_d[6]]]
+        self.__dual[self.__segment_d[6]: self.__segment_d[7]] = [j - 0.5 for j in self.__dual[self.__segment_d[6]:
+                                                                                              self.__segment_d[7]]]
+        self.__dual[self.__segment_d[12]: self.__segment_d[13]] = [j + 0.5 for j in self.__dual[self.__segment_d[12]:
+                                                                                                self.__segment_d[13]]]
+        self.__dual[self.__segment_d[13]: self.__segment_d[14]] = [j - 0.5 for j in self.__dual[self.__segment_d[13]:
+                                                                                                self.__segment_d[14]]]

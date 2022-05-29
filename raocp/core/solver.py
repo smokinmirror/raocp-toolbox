@@ -54,7 +54,7 @@ class Solver:
         self.__cache.set_dual(new_dual)
 
     def dual_k_plus_one(self):
-        self.__cache.proximal_of_g_conjugate()
+        self.__cache.proximal_of_g_conjugate(self.__parameter_2)
 
     def _calculate_errors(self):
         # in this function, p = primal and d = dual
@@ -115,7 +115,9 @@ class Solver:
             self.__cache.update_cache()
 
             # cache error
-            print(current_error)
+            print(f"error0 = {np.linalg.norm(self.__error_0, np.inf)},\n"
+                  f"error1 = {np.linalg.norm(self.__error_1, np.inf)},\n"
+                  f"error2 = {np.linalg.norm(self.__error_2, np.inf)},\n")
             error_cache.append(current_error)
 
             # check stopping criteria

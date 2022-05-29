@@ -68,7 +68,7 @@ class TestCache(unittest.TestCase):
         _, prim = mock_cache.get_primal()  # template
         prim[seg_p[1]] = np.random.randn(prim[seg_p[1]].size).reshape(-1, 1)
         mock_cache.cache_initial_state(prim[seg_p[1]])
-        _, old_prim = mock_cache.get_primal()  # template
+        _, old_prim = mock_cache.get_primal()
         self.assertTrue(np.array_equal(prim[seg_p[1]], mock_cache._Cache__initial_state))
         self.assertTrue(np.array_equal(prim[seg_p[1]], old_prim[0]))
         self.assertTrue(np.array_equal(prim[seg_p[1]], mock_cache._Cache__primal_cache[0][0]))
@@ -83,60 +83,96 @@ class TestCache(unittest.TestCase):
         prim, _ = mock_cache.get_primal()  # get modified primal
         self.assertEqual(-parameter, prim[seg_p[s]][0])
 
-    def test_project_on_dynamics(self):
-        mock_cache, seg_p, _ = self._construct_mock_cache()
-        _, prim = mock_cache.get_primal()  # template
-        for i in range(seg_p[1], seg_p[3]):
-            prim[i] = np.random.randn(prim[i].size).reshape(-1, 1)
+    # def test_project_on_dynamics(self):
+    #     mock_cache, seg_p, _ = self._construct_mock_cache()
+    #     _, prim = mock_cache.get_primal()  # template
+    #     for i in range(seg_p[1], seg_p[3]):
+    #         prim[i] = np.random.randn(prim[i].size).reshape(-1, 1)
+    #
+    #     # solve with dp
+    #     mock_cache.cache_initial_state(prim[seg_p[1]])
+    #     mock_cache.set_primal(prim)
+    #     mock_cache.project_on_dynamics()
+    #     dp_result, _ = mock_cache.get_primal()
+    #     x_dp = np.asarray(prim[seg_p[1]: seg_p[2]])
+    #     u_dp = np.asarray(prim[seg_p[2]: seg_p[3]])
+    #     # ensure x0 stayed the same
+    #     self.assertTrue(np.allclose(prim[seg_p[1]], x_dp[0]))
+    #
+    #     # solve with cvxpy
+    #     for i in range(seg_p[1], seg_p[3]):
+    #         prim[i] = prim[i].reshape(-1,)
+    #
+    #     x_bar = np.asarray(prim[seg_p[1]: seg_p[2]])
+    #     u_bar = np.asarray(prim[seg_p[2]: seg_p[3]])
+    #     N = self.__tree_from_markov.num_nodes
+    #     n = self.__tree_from_markov.num_nonleaf_nodes
+    #     x = cp.Variable(x_bar.shape)
+    #     u = cp.Variable(u_bar.shape)
+    #     # sum problem objectives and concatenate constraints
+    #     cost = 0
+    #     constraints = [x[0] == x_bar[0]]
+    #     # nonleaf nodes
+    #     for node in range(n):
+    #         cost += cp.sum_squares(x[node] - x_bar[node]) + cp.sum_squares(u[node] - u_bar[node])
+    #         for ch in self.__tree_from_markov.children_of(node):
+    #             constraints += [x[ch] ==
+    #                             self.__raocp_from_markov.state_dynamics_at_node(ch) @ x[node] +
+    #                             self.__raocp_from_markov.control_dynamics_at_node(ch) @ u[node]]
+    #
+    #     # leaf nodes
+    #     for node in range(n, N):
+    #         cost += cp.sum_squares(x[node] - x_bar[node])
+    #
+    #     problem = cp.Problem(cp.Minimize(cost), constraints)
+    #     problem.solve(solver=cp.ECOS)
+    #     # ensure x0 stayed the same
+    #     self.assertTrue(np.allclose(prim[seg_p[1]], x.value[0]))
+    #
+    #     # check solutions are similar
+    #     node = 1
+    #     print(f"cvxpy x = {x.value[node]}\n"
+    #           f"dp x = {x_dp[node].T}")
+    #     print(f"cvxpy obj = {[node]}\n"
+    #           f"dp obj = {u_dp[node].T}")
+    #     self.assertTrue(np.allclose(x.value, x_dp[:, :, 0]))
+    #     self.assertTrue(np.allclose(u.value, u_dp[:, :, 0]))
 
-        # solve with dp
-        mock_cache.cache_initial_state(prim[seg_p[1]])
-        mock_cache.set_primal(prim)
-        mock_cache.project_on_dynamics()
-        dp_result, _ = mock_cache.get_primal()
-        x_dp = np.asarray(prim[seg_p[1]: seg_p[2]])
-        u_dp = np.asarray(prim[seg_p[2]: seg_p[3]])
-        # ensure x0 stayed the same
-        self.assertTrue(np.allclose(prim[seg_p[1]], x_dp[0]))
+    def test_add_halves(self):
+        mock_cache, _, seg_d = self._construct_mock_cache()
+        mock_cache.add_halves()
+        dual, _ = mock_cache.get_dual()
+        minus_half = -0.5
+        plus_half = 0.5
+        for i in dual[seg_d[5]: seg_d[6]]:
+            self.assertEqual(i, minus_half)
 
-        # solve with cvxpy
-        for i in range(seg_p[1], seg_p[3]):
-            prim[i] = prim[i].reshape(-1,)
+        for i in dual[seg_d[6]: seg_d[7]]:
+            self.assertEqual(i, plus_half)
 
-        x_bar = np.asarray(prim[seg_p[1]: seg_p[2]])
-        u_bar = np.asarray(prim[seg_p[2]: seg_p[3]])
-        N = self.__tree_from_markov.num_nodes
-        n = self.__tree_from_markov.num_nonleaf_nodes
-        x = cp.Variable(x_bar.shape)
-        u = cp.Variable(u_bar.shape)
-        # sum problem objectives and concatenate constraints
-        cost = 0
-        constraints = [x[0] == x_bar[0]]
-        # nonleaf nodes
-        for node in range(n):
-            cost += cp.sum_squares(x[node] - x_bar[node]) + cp.sum_squares(u[node] - u_bar[node])
-            for ch in self.__tree_from_markov.children_of(node):
-                constraints += [x[ch] ==
-                                self.__raocp_from_markov.state_dynamics_at_node(ch) @ x[node] +
-                                self.__raocp_from_markov.control_dynamics_at_node(ch) @ u[node]]
+        for i in dual[seg_d[12]: seg_d[13]]:
+            self.assertEqual(i, minus_half)
 
-        # leaf nodes
-        for node in range(n, N):
-            cost += cp.sum_squares(x[node] - x_bar[node])
+        for i in dual[seg_d[13]: seg_d[14]]:
+            self.assertEqual(i, plus_half)
 
-        problem = cp.Problem(cp.Minimize(cost), constraints)
-        problem.solve(solver=cp.ECOS)
-        # ensure x0 stayed the same
-        self.assertTrue(np.allclose(prim[seg_p[1]], x.value[0]))
+    def test_subtract_halves(self):
+        mock_cache, _, seg_d = self._construct_mock_cache()
+        mock_cache.subtract_halves()
+        dual, _ = mock_cache.get_dual()
+        minus_half = -0.5
+        plus_half = 0.5
+        for i in dual[seg_d[5]: seg_d[6]]:
+            self.assertEqual(i, plus_half)
 
-        # check solutions are similar
-        node = 1
-        print(f"cvxpy x = {x.value[node]}\n"
-              f"dp x = {x_dp[node].T}")
-        print(f"cvxpy obj = {[node]}\n"
-              f"dp obj = {u_dp[node].T}")
-        self.assertTrue(np.allclose(x.value, x_dp[:, :, 0]))
-        self.assertTrue(np.allclose(u.value, u_dp[:, :, 0]))
+        for i in dual[seg_d[6]: seg_d[7]]:
+            self.assertEqual(i, minus_half)
+
+        for i in dual[seg_d[12]: seg_d[13]]:
+            self.assertEqual(i, plus_half)
+
+        for i in dual[seg_d[13]: seg_d[14]]:
+            self.assertEqual(i, minus_half)
 
 
 if __name__ == '__main__':
