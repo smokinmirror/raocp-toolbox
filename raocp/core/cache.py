@@ -2,6 +2,7 @@ import numpy as np
 import scipy.optimize
 import raocp.core.problem_spec as ps
 import raocp.core.cones as cones
+import raocp.core.risks as risks
 
 
 class Cache:
@@ -74,10 +75,11 @@ class Cache:
         self.__primal_cache[0][0] = state
 
     def set_primal(self, candidate_primal):
-        if len(candidate_primal) != len(self.__primal):
+        primal_length = len(self.__old_primal)
+        if len(candidate_primal) != primal_length:
             raise Exception("Candidate primal list is wrong length")
-        for i in range(len(candidate_primal)):
-            if candidate_primal[i].shape != self.__primal[i].shape:
+        for i in range(primal_length):
+            if candidate_primal[i].shape != self.__old_primal[i].shape:
                 all_segments = range(1, 6)
                 for s in reversed(all_segments):
                     if i >= self.__segment_d[s]:
@@ -87,15 +89,16 @@ class Cache:
 
                 raise Exception(f"Candidate primal array shape error in segment {segment} at node {node},\n"
                                 f"candidate shape: {candidate_primal[i].shape},\n"
-                                f"current shape: {self.__primal[i].shape}")
+                                f"current shape: {self.__old_primal[i].shape}")
             else:
                 self.__primal[i] = candidate_primal[i]
 
     def set_dual(self, candidate_dual):
-        if len(candidate_dual) != len(self.__dual):
+        dual_length = len(self.__dual_cache[0])
+        if len(candidate_dual) != dual_length:
             raise Exception("Candidate dual list is wrong length")
-        for i in range(len(candidate_dual)):
-            if candidate_dual[i].shape != self.__dual[i].shape:
+        for i in range(dual_length):
+            if candidate_dual[i].shape != self.__old_dual[i].shape:
                 all_segments = range(1, 15)
                 exclude = {8, 9, 10}
                 active_segments = [num for num in all_segments if num not in exclude]
@@ -107,7 +110,7 @@ class Cache:
 
                 raise Exception(f"Candidate dual array shape error in segment {segment} at node {node},\n"
                                 f"candidate shape: {candidate_dual[i].shape},\n"
-                                f"current shape: {self.__dual[i].shape}")
+                                f"current shape: {self.__old_dual[i].shape}")
             else:
                 self.__dual[i] = candidate_dual[i]
 
@@ -153,17 +156,16 @@ class Cache:
                 self.__dual[self.__segment_d[11] + i] = np.zeros((self.__state_size, 1))
 
     def _create_cones(self):
-        self.__nonleaf_constraint_cone = [None] * self.__num_nonleaf_nodes
-        self.__nonleaf_second_order_cone = [None] * self.__num_nodes
-        self.__leaf_second_order_cone = [None] * self.__num_nodes
-        for i in range(self.__num_nodes):
-            if i < self.__num_nonleaf_nodes:
-                self.__nonleaf_constraint_cone[i] = cones.Cartesian([cones.NonnegativeOrthant(),
-                                                                     cones.NonnegativeOrthant()])
-            if i > 0:
-                self.__nonleaf_second_order_cone[i] = cones.SecondOrderCone()
-            if i >= self.__num_nonleaf_nodes:
-                self.__leaf_second_order_cone[i] = cones.SecondOrderCone()
+        self.__nonleaf_dual_cone = []
+        for i in range(self.__num_nonleaf_nodes):
+            if type(self.__raocp.risk_at_node(i)) is risks.AVaR:
+                self.__nonleaf_dual_cone.append(self.__raocp.risk_at_node(i).cone)
+            else:
+                raise Exception(f"Risk at node {i} not defined")
+
+        self.__nonleaf_nonnegorth_cone = [cones.NonnegativeOrthant()] * self.__num_nonleaf_nodes
+        self.__nonleaf_second_order_cone = [cones.SecondOrderCone()] * self.__num_nodes
+        self.__leaf_second_order_cone = [cones.SecondOrderCone()] * self.__num_nodes
 
     # CACHE ############################################################################################################
 
@@ -272,27 +274,29 @@ class Cache:
 
     def project_on_kernel(self):
         """
-        use kernels to project (y, tau, s) onto the kernel set S_2
+        use kernels to project (y, tau+, s+) onto the kernel set S_2
         :returns: nothing
         """
         for i in range(self.__num_nonleaf_nodes):
             children_of_i = self.__raocp.tree.children_of(i)
-            # get children of i out of next stage of tau and s
-            tau_stack = self.__primal[self.__segment_p[4] + children_of_i[0]]
+            y = self.__primal[self.__segment_p[3] + i]
+            y_size = y.size
+            t_or_s_size = children_of_i.size  # size of tau which is same as size of s
+            # get children of i out of tau and s
+            t_stack = self.__primal[self.__segment_p[4] + children_of_i[0]]
             s_stack = self.__primal[self.__segment_p[5] + children_of_i[0]]
-            if children_of_i.size > 1:
+            if t_or_s_size > 1:
                 for j in np.delete(children_of_i, 0):
-                    tau_stack = np.vstack((tau_stack, self.__primal[self.__segment_p[4] + j]))
+                    t_stack = np.vstack((t_stack, self.__primal[self.__segment_p[4] + j]))
                     s_stack = np.vstack((s_stack, self.__primal[self.__segment_p[5] + j]))
 
-            full_stack = np.vstack((self.__primal[self.__segment_p[3] + i], s_stack, tau_stack))
+            full_stack = np.vstack((y, t_stack, s_stack))
             projection = self.__kernel_projection_operator[i] @ full_stack
-            self.__primal[self.__segment_p[3] + i] = projection[0: self.__primal[self.__segment_p[3] + i].size]
-            for k in range(children_of_i.size):
-                self.__primal[self.__segment_p[5] + children_of_i[k]] = \
-                    (projection[self.__primal[self.__segment_p[3] + i].size + k]).reshape(-1, 1)
-                self.__primal[self.__segment_p[4] + children_of_i[k]] = \
-                    (projection[self.__primal[self.__segment_p[3] + i].size + children_of_i.size + k]).reshape(-1, 1)
+            self.__primal[self.__segment_p[3] + i] = projection[0: y_size]
+            for j in range(t_or_s_size):
+                self.__primal[self.__segment_p[4] + children_of_i[j]] = (projection[y_size + j]).reshape(-1, 1)
+                self.__primal[self.__segment_p[5] + children_of_i[j]] = (projection[y_size + t_or_s_size + j]) \
+                    .reshape(-1, 1)
 
     # proximal of g conjugate ------------------------------------------------------------------------------------------
 
@@ -303,7 +307,7 @@ class Cache:
     def modify_dual(self, solver_parameter):
         # algo 6
         for i in range(len(self.__dual)):
-            self.__dual[i] = self.__dual[i] / solver_parameter
+            self.__dual[i] /= solver_parameter
 
         self.add_halves()
 
@@ -311,56 +315,50 @@ class Cache:
         # algo 7
         dual_copy = self.__dual.copy()
         for i in range(self.__num_nonleaf_nodes):
-            [self.__dual[self.__segment_d[1] + i], self.__dual[self.__segment_d[2] + i]] = \
-                self.__nonleaf_constraint_cone[i]\
-                    .project([self.__dual[self.__segment_d[1] + i], self.__dual[self.__segment_d[2] + i]])
-            children_of_i = self.__raocp.tree.children_of(i)
-            for j in children_of_i:
+            self.__dual[self.__segment_d[1] + i] = self.__nonleaf_dual_cone[i] \
+                .project_onto_dual([self.__dual[self.__segment_d[1] + i]])
+            self.__dual[self.__segment_d[2] + i] = self.__nonleaf_nonnegorth_cone[i]\
+                .project(self.__dual[self.__segment_d[2] + i])
+            for j in self.__raocp.tree.children_of(i):
                 start = 3
-                end = 6
-                size = [0] * (end + 1)
-                for k in range(start, end+1):
+                end = 6 + 1  # +1 for loops
+                size = [0] * end
+                for k in range(start, end):
                     size[k] = size[k-1] + self.__dual[self.__segment_d[k] + j].size
 
                 soc_vector = np.vstack((self.__dual[self.__segment_d[3] + j], self.__dual[self.__segment_d[4] + j],
                                         self.__dual[self.__segment_d[5] + j], self.__dual[self.__segment_d[6] + j]))
                 soc_projection = self.__nonleaf_second_order_cone[j].project(soc_vector)
-
-                for k in range(start, end+1):
+                for k in range(start, end):
                     self.__dual[self.__segment_d[k] + j] = soc_projection[size[k - 1]: size[k]]
 
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             start = 11
-            end = 13
-            size = [0] * (end + 1)
-            for k in range(start, end + 1):
-                size[k] = size[k - 1] + self.__dual[self.__segment_d[k] + i].size
+            end = 13 + 1  # +1 for loops
+            size = [0] * end
+            for j in range(start, end):
+                size[j] = size[j - 1] + self.__dual[self.__segment_d[j] + i].size
 
             soc_vector = np.vstack((self.__dual[self.__segment_d[11] + i], self.__dual[self.__segment_d[12] + i],
                                     self.__dual[self.__segment_d[13] + i]))
             soc_projection = self.__leaf_second_order_cone[i].project(soc_vector)
 
-            for k in range(start, end + 1):
-                self.__dual[self.__segment_d[k] + i] = soc_projection[size[k - 1]: size[k]]
+            for j in range(start, end):
+                self.__dual[self.__segment_d[j] + i] = soc_projection[size[j - 1]: size[j]]
 
         self.__dual = [solver_parameter * (a_i - b_i) for a_i, b_i in zip(dual_copy, self.__dual)]
 
     def add_halves(self):
-        self.__dual[self.__segment_d[5]: self.__segment_d[6]] = [j - 0.5 for j in self.__dual[self.__segment_d[5]:
-                                                                                              self.__segment_d[6]]]
-        self.__dual[self.__segment_d[6]: self.__segment_d[7]] = [j + 0.5 for j in self.__dual[self.__segment_d[6]:
-                                                                                              self.__segment_d[7]]]
-        self.__dual[self.__segment_d[12]: self.__segment_d[13]] = [j - 0.5 for j in self.__dual[self.__segment_d[12]:
-                                                                                                self.__segment_d[13]]]
-        self.__dual[self.__segment_d[13]: self.__segment_d[14]] = [j + 0.5 for j in self.__dual[self.__segment_d[13]:
-                                                                                                self.__segment_d[14]]]
+        plus_half = 0.5
+        minus_half = -0.5
+        for i in range(self.__segment_d[5], self.__segment_d[6]):
+            self.__dual[i] += minus_half
 
-    def subtract_halves(self):
-        self.__dual[self.__segment_d[5]: self.__segment_d[6]] = [j + 0.5 for j in self.__dual[self.__segment_d[5]:
-                                                                                              self.__segment_d[6]]]
-        self.__dual[self.__segment_d[6]: self.__segment_d[7]] = [j - 0.5 for j in self.__dual[self.__segment_d[6]:
-                                                                                              self.__segment_d[7]]]
-        self.__dual[self.__segment_d[12]: self.__segment_d[13]] = [j + 0.5 for j in self.__dual[self.__segment_d[12]:
-                                                                                                self.__segment_d[13]]]
-        self.__dual[self.__segment_d[13]: self.__segment_d[14]] = [j - 0.5 for j in self.__dual[self.__segment_d[13]:
-                                                                                                self.__segment_d[14]]]
+        for i in range(self.__segment_d[6], self.__segment_d[7]):
+            self.__dual[i] += plus_half
+
+        for i in range(self.__segment_d[12], self.__segment_d[13]):
+            self.__dual[i] += minus_half
+
+        for i in range(self.__segment_d[13], self.__segment_d[14]):
+            self.__dual[i] += plus_half
