@@ -87,17 +87,17 @@ class TestCache(unittest.TestCase):
         mock_cache, seg_p, _ = self._construct_mock_cache()
         _, prim = mock_cache.get_primal()  # template
         for i in range(seg_p[1], seg_p[3]):
-            prim[i] = np.random.randn(prim[i].size).reshape(-1, 1)
+            prim[i] = 2 * np.ones(prim[i].size).reshape(-1, 1)  # np.random.randn(prim[i].size).reshape(-1, 1)
 
         # solve with dp
         mock_cache.cache_initial_state(prim[seg_p[1]])
         mock_cache.set_primal(prim)
         mock_cache.project_on_dynamics()
         dp_result, _ = mock_cache.get_primal()
-        x_dp = np.asarray(prim[seg_p[1]: seg_p[2]])
-        u_dp = np.asarray(prim[seg_p[2]: seg_p[3]])
+        x_dp = np.asarray(dp_result[seg_p[1]: seg_p[2]])[:, :, 0]
+        u_dp = np.asarray(dp_result[seg_p[2]: seg_p[3]])[:, :, 0]
         # ensure x0 stayed the same
-        self.assertTrue(np.allclose(prim[seg_p[1]], x_dp[0]))
+        self.assertTrue(np.allclose(prim[seg_p[1]].T, x_dp[0]))
 
         # solve with cvxpy
         for i in range(seg_p[1], seg_p[3]):
@@ -133,7 +133,7 @@ class TestCache(unittest.TestCase):
         # print(f"cvxpy x = {x.value}\n"
         #       f"dp x = {x_dp}")
         print(f"cvxpy u = {u.value[0]}\n"
-              f"   dp u = {u_dp[0, :, 0].T}")
+              f"   dp u = {u_dp[0].T}")
         # self.assertTrue(np.allclose(x.value, x_dp[:, :, 0]))
         # self.assertTrue(np.allclose(u.value, u_dp[:, :, 0]))
 
