@@ -338,9 +338,9 @@ class MarkovChainScenarioTreeFactory:
             probs_new = probs[ancestors[i]] * \
                         self.__transition_prob[values[ancestors[i]], values[i]]
             probs = np.concatenate((probs, [probs_new]))
-        for j in range(i, num_nodes):
-            probs_new = probs[ancestors[j]]
-            probs = np.concatenate((probs, [probs_new]))
+            for j in range(i, num_nodes):
+                probs_new = probs[ancestors[j]]
+                probs = np.concatenate((probs, [probs_new]))
         return probs
 
     def create(self):
