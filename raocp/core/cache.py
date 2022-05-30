@@ -69,7 +69,7 @@ class Cache:
         return self.__segment_d.copy()
 
     def get_kernel_constraint_matrices(self):
-        return self.__kernel_constraint_matrix
+        return self.__kernel_constraint_matrix.copy()
 
     # SETTERS ##########################################################################################################
 
@@ -227,8 +227,6 @@ class Cache:
             row2 = np.hstack((self.__raocp.risk_at_node(i).matrix_f.T, zeros, zeros))
             self.__kernel_constraint_matrix[i] = np.vstack((row1, row2))
             self.__null_space_matrix[i] = scipy.linalg.null_space(self.__kernel_constraint_matrix[i])
-            # pseudoinverse_of_kernel = np.linalg.pinv(kernel)
-            # self.__kernel_projection_operator[i] = kernel @ pseudoinverse_of_kernel
 
     # ONLINE ###########################################################################################################
 
@@ -309,6 +307,7 @@ class Cache:
 
     def proximal_of_g_conjugate(self, solver_parameter):
         self.modify_dual(solver_parameter)
+        self.add_halves()
         modified_dual = self.__dual.copy()  # take copy of modified dual
         self.project_on_constraints_nonleaf()
         self.project_on_constraints_leaf()
@@ -317,9 +316,22 @@ class Cache:
     def modify_dual(self, solver_parameter):
         # algo 6
         for i in range(len(self.__dual)):
-            self.__dual[i] /= solver_parameter
+            self.__dual[i] = self.__dual[i] / solver_parameter
 
-        self.add_halves()
+    def add_halves(self):
+        plus_half = 0.5
+        minus_half = -0.5
+        for i in range(self.__segment_d[5], self.__segment_d[6]):
+            self.__dual[i] = self.__dual[i] + minus_half
+
+        for i in range(self.__segment_d[6], self.__segment_d[7]):
+            self.__dual[i] = self.__dual[i] + plus_half
+
+        for i in range(self.__segment_d[12], self.__segment_d[13]):
+            self.__dual[i] = self.__dual[i] + minus_half
+
+        for i in range(self.__segment_d[13], self.__segment_d[14]):
+            self.__dual[i] = self.__dual[i] + plus_half
 
     def project_on_constraints_nonleaf(self):
         # algo 7
@@ -359,18 +371,3 @@ class Cache:
 
     def modify_projection(self, solver_parameter, modified_dual):
         self.__dual = [solver_parameter * (a_i - b_i) for a_i, b_i in zip(modified_dual, self.__dual)]
-
-    def add_halves(self):
-        plus_half = 0.5
-        minus_half = -0.5
-        for i in range(self.__segment_d[5], self.__segment_d[6]):
-            self.__dual[i] = self.__dual[i] + minus_half
-
-        for i in range(self.__segment_d[6], self.__segment_d[7]):
-            self.__dual[i] = self.__dual[i] + plus_half
-
-        for i in range(self.__segment_d[12], self.__segment_d[13]):
-            self.__dual[i] = self.__dual[i] + minus_half
-
-        for i in range(self.__segment_d[13], self.__segment_d[14]):
-            self.__dual[i] = self.__dual[i] + plus_half
