@@ -156,12 +156,12 @@ class ScenarioTree:
 
     def __str__(self):
         return f"Scenario Tree\n+ Nodes: {self.num_nodes}\n+ Stages: {self.num_stages}\n" \
-               f"+ Scenarios: {len(self.nodes_at_stage(self.num_stages()))}\n" \
+               f"+ Scenarios: {len(self.nodes_at_stage(self.num_stages - 1))}\n" \
                f"+ Data: {self.__data is not None}"
 
     def __repr__(self):
         return f"Scenario tree with {self.num_nodes} nodes, {self.num_stages} stages " \
-               f"and {len(self.nodes_at_stage(self.num_stages))} scenarios"
+               f"and {len(self.nodes_at_stage(self.num_stages - 1))} scenarios"
 
     @staticmethod
     def __circle_coord(rad, arc):
@@ -184,10 +184,10 @@ class ScenarioTree:
     def __draw_leaf_nodes_on_circle(self, trt, radius, dot_size=6):
         trt.pencolor('gray')
         ScenarioTree.__draw_circle(trt, radius)
-        leaf_nodes = self.nodes_at_stage(self.num_stages())
+        leaf_nodes = self.nodes_at_stage(self.num_stages - 1)
         num_nds = len(leaf_nodes)
         dv = 360 / num_nds
-        arcs = np.zeros(self.num_nodes())
+        arcs = np.zeros(self.num_nodes)
         for i in range(num_nds):
             ScenarioTree.__goto_circle_coord(trt, radius, i * dv)
             trt.pencolor('black')
@@ -228,8 +228,8 @@ class ScenarioTree:
         t.speed(0)
 
         arcs = self.__draw_leaf_nodes_on_circle(t, radius, dot_size)
-        radius_step = radius / self.num_stages()
-        for n in range(self.num_stages() - 1, -1, -1):
+        radius_step = radius / (self.num_stages - 1)
+        for n in range(self.num_stages - 2, -1, -1):
             radius -= radius_step
             arcs = self.__draw_nonleaf_nodes_on_circle(t, radius, radius + radius_step, n, arcs, dot_size)
 
@@ -288,23 +288,32 @@ class MarkovChainScenarioTreeFactory:
 
         cursor = 1
         num_nodes_at_stage = num_nonzero_init_distr
-        for stage_idx in range(1, self.__stopping_time):
-            nodes_added_at_stage = 0
-            cursor_new = cursor + num_nodes_at_stage
-            for i in range(num_nodes_at_stage):
-                node_id = cursor + i
-                cover = self.__cover(values[node_id])
-                length_cover = len(cover)
-                ones = np.ones((length_cover,), dtype=int)
-                ancestors = np.concatenate((ancestors, node_id * ones))
-                nodes_added_at_stage += length_cover
-                values = np.concatenate((values, cover))
-            num_nodes_at_stage = nodes_added_at_stage
-            cursor = cursor_new
-            ones = np.ones(nodes_added_at_stage, dtype=int)
-            stages = np.concatenate((stages, (1 + stage_idx) * ones))
+        if self.__stopping_time == 1:
+            node_id = cursor
+            cover = self.__cover(values[node_id])
+            length_cover = len(cover)
+            # ones = np.ones((length_cover,), dtype=int)
+            # ancestors = np.concatenate((ancestors, node_id * ones))
+            nodes_added_at_stage = length_cover
+        else:
+            for stage_idx in range(1, self.__stopping_time):
+                nodes_added_at_stage = 0
+                cursor_new = cursor + num_nodes_at_stage
+                for i in range(num_nodes_at_stage):
+                    node_id = cursor + i
+                    cover = self.__cover(values[node_id])
+                    length_cover = len(cover)
+                    ones = np.ones((length_cover,), dtype=int)
+                    ancestors = np.concatenate((ancestors, node_id * ones))
+                    nodes_added_at_stage += length_cover
+                    values = np.concatenate((values, cover))
+                num_nodes_at_stage = nodes_added_at_stage
+                cursor = cursor_new
+                ones = np.ones(nodes_added_at_stage, dtype=int)
+                stages = np.concatenate((stages, (1 + stage_idx) * ones))
 
         for stage_idx in range(self.__stopping_time, self.__num_stages):
+            # print(nodes_added_at_stage)
             ancestors = np.concatenate((ancestors, range(cursor, cursor + num_nodes_at_stage)))
             cursor += num_nodes_at_stage
             ones = np.ones((nodes_added_at_stage,), dtype=int)
