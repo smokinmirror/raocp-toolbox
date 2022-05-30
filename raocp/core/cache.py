@@ -57,16 +57,16 @@ class Cache:
         return self.__raocp
 
     def get_primal(self):
-        return self.__primal, self.__old_primal
+        return self.__primal.copy(), self.__old_primal.copy()
 
     def get_primal_segments(self):
-        return self.__segment_p
+        return self.__segment_p.copy()
 
     def get_dual(self):
-        return self.__dual, self.__old_dual
+        return self.__dual.copy(), self.__old_dual.copy()
 
     def get_dual_segments(self):
-        return self.__segment_d
+        return self.__segment_d.copy()
 
     def get_kernel_constraint_matrices(self):
         return self.__kernel_constraint_matrix
@@ -309,7 +309,10 @@ class Cache:
 
     def proximal_of_g_conjugate(self, solver_parameter):
         self.modify_dual(solver_parameter)
-        self.project_on_constraints(solver_parameter)
+        modified_dual = self.__dual.copy()  # take copy of modified dual
+        self.project_on_constraints_nonleaf()
+        self.project_on_constraints_leaf()
+        self.modify_projection(solver_parameter, modified_dual)
 
     def modify_dual(self, solver_parameter):
         # algo 6
@@ -318,9 +321,8 @@ class Cache:
 
         self.add_halves()
 
-    def project_on_constraints(self, solver_parameter):
+    def project_on_constraints_nonleaf(self):
         # algo 7
-        dual_copy = self.__dual.copy()
         for i in range(self.__num_nonleaf_nodes):
             self.__dual[self.__segment_d[1] + i] = self.__nonleaf_dual_cone[i] \
                 .project_onto_dual([self.__dual[self.__segment_d[1] + i]])
@@ -339,6 +341,8 @@ class Cache:
                 for k in range(start, end):
                     self.__dual[self.__segment_d[k] + j] = soc_projection[size[k - 1]: size[k]]
 
+    def project_on_constraints_leaf(self):
+        # algo 7
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             start = 11
             end = 13 + 1  # +1 for loops
@@ -353,7 +357,8 @@ class Cache:
             for j in range(start, end):
                 self.__dual[self.__segment_d[j] + i] = soc_projection[size[j - 1]: size[j]]
 
-        self.__dual = [solver_parameter * (a_i - b_i) for a_i, b_i in zip(dual_copy, self.__dual)]
+    def modify_projection(self, solver_parameter, modified_dual):
+        self.__dual = [solver_parameter * (a_i - b_i) for a_i, b_i in zip(modified_dual, self.__dual)]
 
     def add_halves(self):
         plus_half = 0.5

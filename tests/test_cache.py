@@ -164,6 +164,23 @@ class TestCache(unittest.TestCase):
             inf_norm = np.linalg.norm(constraint_matrix[i] @ stack, np.inf)
             self.assertTrue(np.allclose(inf_norm, 0))
 
+    def test_modify_projection(self):
+        mock_cache, _, seg_d = self._construct_mock_cache()
+        _, zero_dual = mock_cache.get_dual()
+        parameter = 0
+        while parameter == 0:
+            parameter = np.linalg.norm(np.random.randn(1), 2)
+
+        _, dual = mock_cache.get_dual()
+        for i in range(seg_d[1], seg_d[15]):
+            dual[i] = np.random.randn(dual[i].size).reshape(-1, 1)
+
+        mock_cache.modify_projection(parameter, dual)
+        new_dual, _ = mock_cache.get_dual()
+        for i in range(seg_d[1], seg_d[15]):
+            test_result = parameter * (dual[i] - zero_dual[i])
+            self.assertTrue(np.allclose(test_result, new_dual[i]))
+
     def test_add_halves(self):
         mock_cache, _, seg_d = self._construct_mock_cache()
         mock_cache.add_halves()
