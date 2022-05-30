@@ -138,6 +138,32 @@ class TestCache(unittest.TestCase):
     #     self.assertTrue(np.allclose(x.value, x_dp[:, :, 0]))
     #     self.assertTrue(np.allclose(u.value, u_dp[:, :, 0]))
 
+    def test_kernel_projection(self):
+        mock_cache, seg_p, _ = self._construct_mock_cache()
+        _, prim = mock_cache.get_primal()  # template
+        for i in range(seg_p[3], seg_p[6]):
+            if i == seg_p[3] or i == seg_p[5]:
+                pass
+            else:
+                prim[i] = np.random.randn(prim[i].size).reshape(-1, 1)
+
+        mock_cache.set_primal(prim)
+        mock_cache.project_on_kernel()
+        proj, _ = mock_cache.get_primal()
+        constraint_matrix = mock_cache.get_kernel_constraint_matrices()
+        for i in range(self.__tree_from_markov.num_nonleaf_nodes):
+            children = self.__tree_from_markov.children_of(i)
+            t_stack = proj[seg_p[4] + children[0]]
+            s_stack = proj[seg_p[5] + children[0]]
+            if children.size > 1:
+                for j in np.delete(children, 0):
+                    t_stack = np.vstack((t_stack, proj[seg_p[4] + j]))
+                    s_stack = np.vstack((s_stack, proj[seg_p[5] + j]))
+
+            stack = np.vstack((proj[seg_p[3] + i], t_stack, s_stack))
+            inf_norm = np.linalg.norm(constraint_matrix[i] @ stack, np.inf)
+            self.assertTrue(np.allclose(inf_norm, 0))
+
     def test_add_halves(self):
         mock_cache, _, seg_d = self._construct_mock_cache()
         mock_cache.add_halves()
@@ -155,24 +181,6 @@ class TestCache(unittest.TestCase):
 
         for i in dual[seg_d[13]: seg_d[14]]:
             self.assertEqual(i, plus_half)
-
-    def test_subtract_halves(self):
-        mock_cache, _, seg_d = self._construct_mock_cache()
-        mock_cache.subtract_halves()
-        dual, _ = mock_cache.get_dual()
-        minus_half = -0.5
-        plus_half = 0.5
-        for i in dual[seg_d[5]: seg_d[6]]:
-            self.assertEqual(i, plus_half)
-
-        for i in dual[seg_d[6]: seg_d[7]]:
-            self.assertEqual(i, minus_half)
-
-        for i in dual[seg_d[12]: seg_d[13]]:
-            self.assertEqual(i, plus_half)
-
-        for i in dual[seg_d[13]: seg_d[14]]:
-            self.assertEqual(i, minus_half)
 
 
 if __name__ == '__main__':

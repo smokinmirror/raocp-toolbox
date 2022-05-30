@@ -42,7 +42,8 @@ class Cache:
         self.__sum_of_dynamics = [np.zeros((0, 0))] * self.__num_nodes  # A+BK
 
         # kernel projection
-        self.__kernel_projection_operator = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+        self.__kernel_constraint_matrix = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
+        self.__null_space_matrix = [np.zeros((0, 0))] * self.__num_nonleaf_nodes
 
         # populate arrays
         self._offline()
@@ -66,6 +67,9 @@ class Cache:
 
     def get_dual_segments(self):
         return self.__segment_d
+
+    def get_kernel_constraint_matrices(self):
+        return self.__kernel_constraint_matrix
 
     # SETTERS ##########################################################################################################
 
@@ -221,10 +225,10 @@ class Cache:
             zeros = np.zeros((self.__raocp.risk_at_node(i).matrix_f.shape[1], eye.shape[0]))
             row1 = np.hstack((self.__raocp.risk_at_node(i).matrix_e.T, -eye, -eye))
             row2 = np.hstack((self.__raocp.risk_at_node(i).matrix_f.T, zeros, zeros))
-            s2_space = np.vstack((row1, row2))
-            kernel = scipy.linalg.null_space(s2_space)
-            pseudoinverse_of_kernel = np.linalg.pinv(kernel)
-            self.__kernel_projection_operator[i] = kernel @ pseudoinverse_of_kernel
+            self.__kernel_constraint_matrix[i] = np.vstack((row1, row2))
+            self.__null_space_matrix[i] = scipy.linalg.null_space(self.__kernel_constraint_matrix[i])
+            # pseudoinverse_of_kernel = np.linalg.pinv(kernel)
+            # self.__kernel_projection_operator[i] = kernel @ pseudoinverse_of_kernel
 
     # ONLINE ###########################################################################################################
 
@@ -291,7 +295,10 @@ class Cache:
                     s_stack = np.vstack((s_stack, self.__primal[self.__segment_p[5] + j]))
 
             full_stack = np.vstack((y, t_stack, s_stack))
-            projection = self.__kernel_projection_operator[i] @ full_stack
+            projection = self.__null_space_matrix[i] @ \
+                np.linalg.lstsq(self.__null_space_matrix[i], full_stack, rcond=None)[0]
+            if not np.allclose(np.linalg.norm(self.__kernel_constraint_matrix[i] @ projection, np.inf), 0):
+                raise Exception("Kernel projection error")
             self.__primal[self.__segment_p[3] + i] = projection[0: y_size]
             for j in range(t_or_s_size):
                 self.__primal[self.__segment_p[4] + children_of_i[j]] = (projection[y_size + j]).reshape(-1, 1)
@@ -352,13 +359,13 @@ class Cache:
         plus_half = 0.5
         minus_half = -0.5
         for i in range(self.__segment_d[5], self.__segment_d[6]):
-            self.__dual[i] += minus_half
+            self.__dual[i] = self.__dual[i] + minus_half
 
         for i in range(self.__segment_d[6], self.__segment_d[7]):
-            self.__dual[i] += plus_half
+            self.__dual[i] = self.__dual[i] + plus_half
 
         for i in range(self.__segment_d[12], self.__segment_d[13]):
-            self.__dual[i] += minus_half
+            self.__dual[i] = self.__dual[i] + minus_half
 
         for i in range(self.__segment_d[13], self.__segment_d[14]):
-            self.__dual[i] += plus_half
+            self.__dual[i] = self.__dual[i] + plus_half
