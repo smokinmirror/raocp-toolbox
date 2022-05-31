@@ -2,6 +2,7 @@ import numpy as np
 import raocp.core.problem_spec as ps
 import raocp.core.cache as cache
 import raocp.core.operators as ops
+import matplotlib.pyplot as plt
 
 
 class Solver:
@@ -16,9 +17,8 @@ class Solver:
         self.__initial_state = None
         self.__parameter_1 = None
         self.__parameter_2 = None
-        self.__error_0 = None
-        self.__error_1 = None
-        self.__error_2 = None
+        self.__xi = [None] * 3
+        self.__error = [np.zeros(1)] * 3
 
     def primal_k_plus_half(self):
         # get memory space for ell_transpose_dual
@@ -67,19 +67,19 @@ class Solver:
         d_minus_d_new = [a_i - b_i for a_i, b_i in zip(d, d_new)]
         _, ell_transpose_d_minus_d_new = self.__cache.get_primal()  # get memory position
         self.__operator.ell_transpose(d_minus_d_new, ell_transpose_d_minus_d_new)
-        self.__error_1 = [a_i - b_i for a_i, b_i in zip(p_minus_p_new_over_alpha1, ell_transpose_d_minus_d_new)]
+        self.__xi[1] = [a_i - b_i for a_i, b_i in zip(p_minus_p_new_over_alpha1, ell_transpose_d_minus_d_new)]
 
         # error 2
         d_minus_d_new_over_alpha2 = [a_i / self.__parameter_2 for a_i in d_minus_d_new]
         p_new_minus_p = [a_i - b_i for a_i, b_i in zip(p_new, p)]
         _, ell_p_new_minus_p = self.__cache.get_dual()  # get memory position
         self.__operator.ell(p_new_minus_p, ell_p_new_minus_p)
-        self.__error_2 = [a_i + b_i for a_i, b_i in zip(d_minus_d_new_over_alpha2, ell_p_new_minus_p)]
+        self.__xi[2] = [a_i + b_i for a_i, b_i in zip(d_minus_d_new_over_alpha2, ell_p_new_minus_p)]
 
         # error 0
         _, ell_transpose_error2 = self.__cache.get_primal()  # get memory position
-        self.__operator.ell_transpose(self.__error_2, ell_transpose_error2)
-        self.__error_0 = [a_i + b_i for a_i, b_i in zip(self.__error_1, ell_transpose_error2)]
+        self.__operator.ell_transpose(self.__xi[2], ell_transpose_error2)
+        self.__xi[0] = [a_i + b_i for a_i, b_i in zip(self.__xi[1], ell_transpose_error2)]
 
     def chock(self, initial_state, alpha1=1.0, alpha2=1.0, max_iters=10, tol=1e-5):
         """
@@ -90,7 +90,6 @@ class Solver:
         self.__parameter_1 = alpha1
         self.__parameter_2 = alpha2
         current_iteration = 0
-        error_cache = []
 
         keep_running = True
         while keep_running:
@@ -104,21 +103,20 @@ class Solver:
 
             # calculate error
             self._calculate_errors()
-            self.__error_0 = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__error_0]
-            self.__error_1 = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__error_1]
-            self.__error_2 = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__error_2]
-            current_error = max([np.linalg.norm(self.__error_0, np.inf),
-                                 np.linalg.norm(self.__error_1, np.inf),
-                                 np.linalg.norm(self.__error_2, np.inf)])
+            for i in range(3):
+                inf_norm = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__xi[i]]
+                self.__error[i] = np.linalg.norm(inf_norm, np.inf)
+
+            current_error = max(self.__error)
 
             # cache variables
             self.__cache.update_cache()
 
             # cache error
-            print(f"error0 = {np.linalg.norm(self.__error_0, np.inf)},\n"
-                  f"error1 = {np.linalg.norm(self.__error_1, np.inf)},\n"
-                  f"error2 = {np.linalg.norm(self.__error_2, np.inf)},\n")
-            error_cache.append(current_error)
+            if current_iteration == 0:
+                error_cache = np.array(self.__error)
+            else:
+                error_cache = np.vstack((error_cache, np.array(self.__error)))
 
             # check stopping criteria
             if current_iteration >= max_iters:
@@ -127,3 +125,20 @@ class Solver:
                 keep_running = False
             if keep_running is True:
                 current_iteration += 1
+
+        # primal, _ = self.__cache.get_primal()
+        # seg_p = self.__cache.get_primal_segments()
+        # x = primal[seg_p[1]: seg_p[2]]
+        # u = primal[seg_p[2]: seg_p[3]]
+        # print(f"x =\n"
+        #       f"{x}\n"
+        #       f"u =\n"
+        #       f"{u}\n")
+        width = 3
+        plt.semilogy(error_cache[:, 0], linewidth=width, linestyle="solid")
+        plt.semilogy(error_cache[:, 1], linewidth=width, linestyle=(0, (5, 10)))
+        plt.semilogy(error_cache[:, 2], linewidth=width, linestyle="dashed")
+        plt.ylabel(r"residual value", fontsize=12)
+        plt.xlabel(r"iteration", fontsize=12)
+        plt.legend(("xi_0", "xi_1", "xi_2"))
+        plt.show()
