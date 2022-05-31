@@ -18,7 +18,7 @@ class TestCache(unittest.TestCase):
                           [0.4, 0.6, 0],
                           [0, 0.3, 0.7]])
             v = np.array([0.5, 0.4, 0.1])
-            (N, tau) = (1, 1)
+            (N, tau) = (2, 1)
             TestCache.__tree_from_markov = core_tree.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @staticmethod

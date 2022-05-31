@@ -142,3 +142,5 @@ class Solver:
         plt.xlabel(r"iteration", fontsize=12)
         plt.legend(("xi_0", "xi_1", "xi_2"))
         plt.show()
+
+        print(np.allclose(error_cache[:, 0], error_cache[:, 1]))

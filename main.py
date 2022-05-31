@@ -8,7 +8,7 @@ p = np.array([[0.1, 0.8, 0.1],
               [0.4, 0.6, 0],
               [0, 0.3, 0.7]])
 
-v = np.array([0.5, 0.5, 0.0])
+v = np.array([0.5, 0.4, 0.1])
 
 (N, tau) = (1, 1)
 tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
@@ -16,10 +16,10 @@ tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
                                              num_stages=N, stopping_time=tau).create()
 
 # tree.bulls_eye_plot(dot_size=5, radius=300)
-#
+
 # tree.set_data_at_node(2, {"a": 1})
 # print(sum(tree.probability_of_node(tree.nodes_at_stage(8))))
-#
+
 # print(tree)
 
 # RAOCP generation -----------------------------------------------------------------------------------------------------
@@ -49,5 +49,5 @@ problem = r.core.RAOCP(scenario_tree=tree)\
 
 solver = r.core.Solver(problem_spec=problem)
 initial_state = np.array([[2], [1], [-1]])
-alpha_cp = .5
+alpha_cp = .2
 solver.chock(initial_state=initial_state, alpha1=alpha_cp, alpha2=alpha_cp, max_iters=5000, tol=1e-5)
