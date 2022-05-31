@@ -87,7 +87,7 @@ class TestCache(unittest.TestCase):
         mock_cache, seg_p, _ = self._construct_mock_cache()
         _, prim = mock_cache.get_primal()  # template
         for i in range(seg_p[1], seg_p[3]):
-            prim[i] = 2 * np.ones(prim[i].size).reshape(-1, 1)  # np.random.randn(prim[i].size).reshape(-1, 1)
+            prim[i] = 3 * np.ones(prim[i].size).reshape(-1, 1)  # np.random.randn(prim[i].size).reshape(-1, 1)
 
         # solve with dp
         mock_cache.cache_initial_state(prim[seg_p[1]])
@@ -125,17 +125,13 @@ class TestCache(unittest.TestCase):
             cost += cp.sum_squares(x[node] - x_bar[node])
 
         problem = cp.Problem(cp.Minimize(cost), constraints)
-        problem.solve(solver=cp.ECOS)
+        problem.solve()
         # ensure x0 stayed the same
         self.assertTrue(np.allclose(prim[seg_p[1]], x.value[0]))
 
         # check solutions are similar
-        # print(f"cvxpy x = {x.value}\n"
-        #       f"dp x = {x_dp}")
-        print(f"cvxpy u = {u.value[0]}\n"
-              f"   dp u = {u_dp[0].T}")
-        # self.assertTrue(np.allclose(x.value, x_dp[:, :, 0]))
-        # self.assertTrue(np.allclose(u.value, u_dp[:, :, 0]))
+        self.assertTrue(np.allclose(x.value, x_dp))
+        self.assertTrue(np.allclose(u.value, u_dp))
 
     def test_kernel_projection(self):
         mock_cache, seg_p, _ = self._construct_mock_cache()

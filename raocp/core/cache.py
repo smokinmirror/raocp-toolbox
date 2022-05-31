@@ -199,23 +199,26 @@ class Cache:
             self.__P[i] = np.eye(self.__state_size)
 
         for i in reversed(range(self.__num_nonleaf_nodes)):
-            sum_for_modified_control_dynamics = 0
+            children_of_i = self.__raocp.tree.children_of(i)
+            sum_for_r = 0
             sum_for_k = 0
-            for j in self.__raocp.tree.children_of(i):
-                sum_for_modified_control_dynamics += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
-                    @ self.__raocp.control_dynamics_at_node(j)
-                sum_for_k += self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] \
-                    @ self.__raocp.state_dynamics_at_node(j)
+            for j in children_of_i:
+                sum_for_r = sum_for_r + \
+                    self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] @ \
+                    self.__raocp.control_dynamics_at_node(j)
+                sum_for_k = sum_for_k + \
+                    self.__raocp.control_dynamics_at_node(j).T @ self.__P[j] @ \
+                    self.__raocp.state_dynamics_at_node(j)
 
-            self.__cholesky_data[i] = \
-                scipy.linalg.cho_factor(np.eye(self.__control_size) + sum_for_modified_control_dynamics)
-            self.__K[i] = - scipy.linalg.cho_solve(self.__cholesky_data[i], sum_for_k)
+            r_tilde = np.eye(self.__control_size) + sum_for_r
+            self.__cholesky_data[i] = scipy.linalg.cho_factor(r_tilde)
+            self.__K[i] = scipy.linalg.cho_solve(self.__cholesky_data[i], -sum_for_k)
 
             sum_for_p = 0
-            for j in self.__raocp.tree.children_of(i):
+            for j in children_of_i:
                 self.__sum_of_dynamics[j] = self.__raocp.state_dynamics_at_node(j) \
                                     + self.__raocp.control_dynamics_at_node(j) @ self.__K[i]
-                sum_for_p += self.__sum_of_dynamics[j].T @ self.__P[j] @ self.__sum_of_dynamics[j]
+                sum_for_p = sum_for_p + self.__sum_of_dynamics[j].T @ self.__P[j] @ self.__sum_of_dynamics[j]
 
             self.__P[i] = np.eye(self.__state_size) + self.__K[i].T @ self.__K[i] + sum_for_p
 
@@ -249,12 +252,12 @@ class Cache:
         :returns: nothing
         """
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
-            self.__q[i] = -2 * self.__q[i]
+            self.__q[i] = -self.__primal[self.__segment_p[1] + i]
 
         for i in reversed(range(self.__num_nonleaf_nodes)):
             sum_for_d = 0
             for j in self.__raocp.tree.children_of(i):
-                sum_for_d += self.__raocp.control_dynamics_at_node(j).T @ self.__q[i]
+                sum_for_d += self.__raocp.control_dynamics_at_node(j).T @ self.__q[j]
 
             self.__d[i] = scipy.linalg.cho_solve(self.__cholesky_data[i],
                                                  self.__primal[self.__segment_p[2] + i] - sum_for_d)
@@ -263,7 +266,7 @@ class Cache:
                 sum_for_q += self.__sum_of_dynamics[j].T @ \
                     (self.__P[j] @ self.__raocp.control_dynamics_at_node(j) @ self.__d[i] + self.__q[j])
 
-            self.__q[i] = - self.__primal[self.__segment_p[1] + i] + \
+            self.__q[i] = -self.__primal[self.__segment_p[1] + i] + \
                 self.__K[i].T @ (self.__d[i] - self.__primal[self.__segment_p[2] + i]) + sum_for_q
 
         self.__primal[self.__segment_p[1]] = self.__initial_state
