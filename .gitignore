@@ -1,5 +1,7 @@
 # additional
 .idea
+r_script.sh
+ci/venv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

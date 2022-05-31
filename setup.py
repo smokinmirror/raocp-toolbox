@@ -35,7 +35,7 @@ setup(name=NAME,
           exclude=["tests"]),
       include_package_data=True,
       install_requires=[
-          'numpy', 'scipy', 'PythonTurtle'
+          'numpy', 'scipy', 'PythonTurtle', 'matplotlib'
       ],
       classifiers=[
           'Programming Language :: Python'
