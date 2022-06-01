@@ -29,8 +29,10 @@ class Rectangle(bc.Constraint):
     def project(self, vector):
         self._check_input(vector)
         constrained_vector = np.zeros(vector.shape)
-        for i in vector.size:
+        for i in range(vector.size):
             constrained_vector[i] = self._constrain(vector[i], self.__min[i], self.__max[i])
+
+        return constrained_vector
 
     @staticmethod
     def _check_constraints(_min, _max):
