@@ -10,14 +10,13 @@ class Constraint:
         self.__control_size = None
         self.__state_matrix = None
         self.__control_matrix = None
-        self.__constrained_state = None
-        self.__constrained_control = None
+        self.__constrained_vector = None
 
     @property
     def is_active(self):
         raise Exception("Base constraint accessed - actual constraint must not be setup")
 
-    def project(self, state, control=None):
+    def project(self, vector):
         pass
 
     # GETTERS

@@ -194,6 +194,9 @@ class TestCache(unittest.TestCase):
         for i in dual[seg_d[13]: seg_d[14]]:
             self.assertEqual(i, plus_half)
 
+    def test_project_on_constraints_nonleaf(self):
+        mock_cache, _, seg_d = self._construct_mock_cache()
+
     def test_modify_projection(self):
         mock_cache, _, seg_d = self._construct_mock_cache()
         _, zero_dual = mock_cache.get_dual()

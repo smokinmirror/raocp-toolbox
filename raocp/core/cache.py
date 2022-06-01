@@ -356,6 +356,10 @@ class Cache:
                 for k in range(start, end):
                     self.__dual[self.__segment_d[k] + j] = soc_projection[size[k - 1]: size[k]]
 
+            if self.__raocp.nonleaf_constraint_at_node(i).is_active:
+                self.__dual[self.__segment_d[7] + i] = self.__raocp.nonleaf_constraint_at_node(i)\
+                    .project(self.__dual[self.__segment_d[7] + i])
+
     def project_on_constraints_leaf(self):
         # algo 7
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
@@ -368,9 +372,12 @@ class Cache:
             soc_vector = np.vstack((self.__dual[self.__segment_d[11] + i], self.__dual[self.__segment_d[12] + i],
                                     self.__dual[self.__segment_d[13] + i]))
             soc_projection = self.__leaf_second_order_cone[i].project(soc_vector)
-
             for j in range(start, end):
                 self.__dual[self.__segment_d[j] + i] = soc_projection[size[j - 1]: size[j]]
+
+            if self.__raocp.leaf_constraint_at_node(i).is_active:
+                self.__dual[self.__segment_d[14] + i] = self.__raocp.leaf_constraint_at_node(i) \
+                    .project(self.__dual[self.__segment_d[14] + i])
 
     def modify_projection(self, solver_parameter, modified_dual):
         self.__dual = [solver_parameter * (a_i - b_i) for a_i, b_i in zip(modified_dual, self.__dual)]
