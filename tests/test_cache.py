@@ -2,6 +2,7 @@ import unittest
 import raocp.core.scenario_tree as core_tree
 import raocp.core.problem_spec as core_spec
 import raocp.core.cache as core_cache
+import raocp.core.constraints.rectangle as rectangle
 import numpy as np
 import cvxpy as cp
 
@@ -41,6 +42,16 @@ class TestCache(unittest.TestCase):
             control_weights = [control_weight, 2 * control_weight, 3 * control_weight]
             leaf_state_weight = 5 * np.eye(TestCache.__good_size)  # n x n matrix
 
+            # construct constraint min and max
+            nonleaf_size = TestCache.__good_size + TestCache.__good_size
+            leaf_size = TestCache.__good_size
+            nl_min = -2 * np.ones((nonleaf_size, 1))
+            nl_max = 2 * np.ones((nonleaf_size, 1))
+            l_min = -0.5 * np.ones((leaf_size, 1))
+            l_max = 0.5 * np.ones((leaf_size, 1))
+            nl_rect = rectangle.Rectangle(nl_min, nl_max)
+            l_rect = rectangle.Rectangle(l_min, l_max)
+
             # define risks
             (risk_type, alpha) = ("AVaR", 0.5)
 
@@ -48,6 +59,8 @@ class TestCache(unittest.TestCase):
                 .with_markovian_dynamics(set_system, set_control) \
                 .with_markovian_costs(cost_types, nonleaf_state_weights, control_weights) \
                 .with_all_leaf_costs(cost_type, leaf_state_weight) \
+                .with_all_nonleaf_constraints(nl_rect) \
+                .with_all_leaf_constraints(l_rect) \
                 .with_all_risks(risk_type, alpha)
 
     @staticmethod
@@ -196,6 +209,10 @@ class TestCache(unittest.TestCase):
 
     def test_project_on_constraints_nonleaf(self):
         mock_cache, _, seg_d = self._construct_mock_cache()
+        _, dual = mock_cache.get_dual()
+        for i in range(seg_d[1], seg_d[15]):
+            dual[i] = np.random.randn(dual[i].size).reshape(-1, 1)
+
 
     def test_modify_projection(self):
         mock_cache, _, seg_d = self._construct_mock_cache()

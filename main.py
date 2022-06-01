@@ -32,13 +32,13 @@ Bs = [Bw, 2 * Bw, 3 * Bw]  # n x u matrices
 
 cost_type = "Quadratic"
 cost_types = [cost_type] * 3
-Q = 10 * np.eye(3)  # n x n matrix
+Q = np.eye(3)  # n x n matrix
 Qs = [Q, 2 * Q, 3 * Q]
 R = np.eye(3)  # u x u matrix OR scalar
 Rs = [R, 2 * R, 3 * R]
-Pf = 5 * np.eye(3)  # n x n matrix
+Pf = np.eye(3)  # n x n matrix
 
-(risk_type, alpha) = ("AVaR", 0.5)
+(risk_type, alpha) = ("AVaR", .3)
 problem = r.core.RAOCP(scenario_tree=tree)\
     .with_markovian_dynamics(As, Bs)\
     .with_markovian_costs(cost_types, Qs, Rs) \
@@ -50,4 +50,4 @@ problem = r.core.RAOCP(scenario_tree=tree)\
 solver = r.core.Solver(problem_spec=problem)
 initial_state = np.array([[2], [1], [-1]])
 alpha_cp = .2
-solver.chock(initial_state=initial_state, alpha1=alpha_cp, alpha2=alpha_cp, max_iters=5000, tol=1e-5)
+solver.chock(initial_state=initial_state, alpha1=alpha_cp, alpha2=alpha_cp, max_iters=5000, tol=1e-3)

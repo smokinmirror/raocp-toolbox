@@ -19,7 +19,7 @@ class RAOCP:
         self.__tree = scenario_tree
         self.__num_nodes = self.__tree.num_nodes
         self.__num_nonleaf_nodes = self.__tree.num_nonleaf_nodes
-        self.__list_of_dynamics = [None] + [core_dynamics.Dynamics] * self.__num_nodes
+        self.__list_of_dynamics = [None] * self.__num_nodes
         self.__list_of_nonleaf_costs = [None] * self.__num_nodes
         self.__list_of_leaf_costs = [None] * self.__num_nodes
         self.__list_of_nonleaf_constraints = [None] * self.__num_nodes
@@ -77,10 +77,11 @@ class RAOCP:
         return self.list_of_risks[idx]
 
     def _is_dynamics_given(self):
-        if self.__list_of_dynamics.any() is None:
-            return False
-        else:
-            return True
+        for i in range(1, len(self.__list_of_dynamics)):
+            if self.__list_of_dynamics[i] is None:
+                return False
+            else:
+                return True
 
     def _check_dynamics_before_constraints(self):
         # check dynamics are already given
@@ -157,7 +158,7 @@ class RAOCP:
         else:
             raise ValueError("cost type '%s' not supported" % cost_type)
 
-    # Limits -----------------------------------------------------------------------------------------------------------
+    # Constraints ------------------------------------------------------------------------------------------------------
 
     def with_markovian_constraints(self, ordered_list_of_constraints):
         self._check_dynamics_before_constraints()
@@ -174,13 +175,17 @@ class RAOCP:
     def with_all_nonleaf_constraints(self, nonleaf_constraint):
         self._check_dynamics_before_constraints()
         for i in range(self.__tree.num_nonleaf_nodes):
-            self.__list_of_nonleaf_constraints[i] = nonleaf_constraint
+            self.__list_of_nonleaf_constraints[i] = nonleaf_constraint\
+                .state_size(self.__list_of_dynamics[-1].state_dynamics.shape[1]) \
+                .control_size(self.__list_of_dynamics[-1].control_dynamics.shape[1])
         return self
 
     def with_all_leaf_constraints(self, leaf_constraint):
         self._check_dynamics_before_constraints()
         for i in range(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes):
-            self.__list_of_leaf_constraints[i] = leaf_constraint
+            self.__list_of_leaf_constraints[i] = leaf_constraint \
+                .set_state(self.__list_of_dynamics[-1].state_dynamics.shape[1]) \
+                .set_control(self.__list_of_dynamics[-1].control_dynamics.shape[1])
         return self
 
     # Risks ------------------------------------------------------------------------------------------------------------

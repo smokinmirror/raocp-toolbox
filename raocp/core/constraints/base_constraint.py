@@ -1,4 +1,3 @@
-import numpy as np
 
 
 class Constraint:
@@ -10,16 +9,15 @@ class Constraint:
         self.__control_size = None
         self.__state_matrix = None
         self.__control_matrix = None
-        self.__constrained_vector = None
-
-    @property
-    def is_active(self):
-        raise Exception("Base constraint accessed - actual constraint must not be setup")
 
     def project(self, vector):
         pass
 
     # GETTERS
+    @property
+    def is_active(self):
+        raise Exception("Base constraint accessed - actual constraint must not be setup")
+
     @property
     def state_size(self):
         return self.__state_size
@@ -37,19 +35,33 @@ class Constraint:
         return self.__control_matrix
 
     # SETTERS
-    def set_state(self, state_size):
-        self.__state_size = state_size
-        self.__constrained_state = np.zeros((self.__state_size, 1))
+    @state_size.setter
+    def state_size(self, size):
+        self.__state_size = size
+        if self.__control_size is None:
+            self.__control_size = 0
+            self._set_matrices()
+        else:
+            self._set_matrices()
 
-    def set_control(self, control_size):
-        self.__control_size = control_size
-        self.__constrained_control = np.zeros((self.__control_size, 1))
+    @control_size.setter
+    def control_size(self, size):
+        self.__control_size = size
+        if self.__state_size is None:
+            pass
+        else:
+            self._set_matrices()
 
-    def set_state_matrix(self, state_matrix):
-        self.__state_matrix = state_matrix
+    def _set_matrices(self):
+        pass
 
-    def set_control_matrix(self, control_matrix):
-        self.__control_matrix = control_matrix
+    @state_matrix.setter
+    def state_matrix(self, matrix):
+        self.__state_matrix = matrix
+
+    @control_matrix.setter
+    def control_matrix(self, matrix):
+        self.__control_matrix = matrix
 
     # extras
     def __str__(self):
