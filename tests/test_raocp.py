@@ -1,6 +1,10 @@
 import unittest
+import raocp.core.nodes as core_nodes
 import raocp.core.scenario_tree as core_tree
 import raocp.core.problem_spec as core_spec
+import raocp.core.dynamics as core_dynamics
+import raocp.core.costs as core_costs
+import raocp.core.risks as core_risks
 import numpy as np
 
 
@@ -13,7 +17,7 @@ class TestRAOCP(unittest.TestCase):
     __good_size = 3
 
     @staticmethod
-    def __construct_tree_from_markov():
+    def _construct_tree_from_markov():
         if TestRAOCP.__tree_from_markov is None:
             p = np.array([[0.1, 0.8, 0.1],
                           [0.4, 0.6, 0],
@@ -24,7 +28,7 @@ class TestRAOCP(unittest.TestCase):
                 core_tree.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @staticmethod
-    def __construct_raocp_from_markov():
+    def _construct_raocp_from_markov():
         if TestRAOCP.__raocp_from_markov is None:
             tree = TestRAOCP.__tree_from_markov
 
@@ -33,36 +37,45 @@ class TestRAOCP(unittest.TestCase):
             set_system = [system, 2 * system, 3 * system]  # n x n matrices
             control = np.eye(2)
             set_control = [control, 2 * control, 3 * control]  # n x u matrices
+            dynamics = [core_dynamics.Dynamics(set_system[0], set_control[0]),
+                        core_dynamics.Dynamics(set_system[1], set_control[1]),
+                        core_dynamics.Dynamics(set_system[2], set_control[2])]
 
             # construct cost weight matrices
-            cost_type = "Quadratic"
-            cost_types = [cost_type] * 3
+            nl = core_nodes.Nonleaf()
+            l = core_nodes.Leaf()
             nonleaf_state_weight = 10 * np.eye(2)  # n x n matrix
             nonleaf_state_weights = [nonleaf_state_weight, 2 * nonleaf_state_weight, 3 * nonleaf_state_weight]
             control_weight = np.eye(2)  # u x u matrix OR scalar
             control_weights = [control_weight, 2 * control_weight, 3 * control_weight]
+            nonleaf_cost = core_costs.Quadratic(nl, nonleaf_state_weight, control_weight)
+            nonleaf_costs = [core_costs.Quadratic(nl, nonleaf_state_weights[0], control_weights[0]),
+                             core_costs.Quadratic(nl, nonleaf_state_weights[1], control_weights[1]),
+                             core_costs.Quadratic(nl, nonleaf_state_weights[2], control_weights[2])]
             leaf_state_weight = 5 * np.eye(2)  # n x n matrix
+            leaf_costs = core_costs.Quadratic(l, leaf_state_weight)
 
             # define risks
-            (risk_type, alpha) = ("AVaR", 0.5)
+            alpha = 0.5
+            risks = core_risks.AVaR(alpha)
 
             # create problem
             TestRAOCP.__raocp_from_markov = core_spec.RAOCP(scenario_tree=tree) \
-                .with_all_nonleaf_costs(cost_type, nonleaf_state_weight, control_weight) \
-                .with_all_leaf_costs(cost_type, leaf_state_weight) \
-                .with_all_risks(risk_type, alpha)
+                .with_all_nonleaf_costs(nonleaf_cost) \
+                .with_all_leaf_costs(leaf_costs) \
+                .with_all_risks(risks)
 
             TestRAOCP.__raocp_from_markov_with_markov = core_spec.RAOCP(scenario_tree=tree) \
-                .with_markovian_dynamics(set_system, set_control) \
-                .with_markovian_costs(cost_types, nonleaf_state_weights, control_weights) \
-                .with_all_leaf_costs(cost_type, leaf_state_weight) \
-                .with_all_risks(risk_type, alpha)
+                .with_markovian_dynamics(dynamics) \
+                .with_markovian_nonleaf_costs(nonleaf_costs) \
+                .with_all_leaf_costs(leaf_costs) \
+                .with_all_risks(risks)
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        TestRAOCP.__construct_tree_from_markov()
-        TestRAOCP.__construct_raocp_from_markov()
+        TestRAOCP._construct_tree_from_markov()
+        TestRAOCP._construct_raocp_from_markov()
 
     def test_markovian_dynamics_list(self):
         tree = TestRAOCP.__tree_from_markov
@@ -79,7 +92,7 @@ class TestRAOCP(unittest.TestCase):
 
     def test_all_nonleaf_costs_list(self):
         tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.
+        raocp = TestRAOCP.__raocp_from_markov
         for i in range(1, tree.num_nodes):
             self.assertTrue(raocp.list_of_nonleaf_costs[i] is not None)
 
@@ -113,45 +126,14 @@ class TestRAOCP(unittest.TestCase):
         for i in range(tree.num_nonleaf_nodes):
             self.assertTrue(raocp.list_of_risks[i] is not None)
 
-    def test_markovian_system_dynamics_failure(self):
+    def test_markovian_dynamics_failure(self):
         tree = TestRAOCP.__tree_from_markov
-
-        # construct bad markovian set of system dynamics
-        set_system = [np.eye(TestRAOCP.__good_size + 1), np.eye(TestRAOCP.__good_size)]  # n x n matrices
-        # construct good markovian set of control dynamics
-        control = np.ones((TestRAOCP.__good_size, 1))
-        set_control = [control, 2 * control]  # n x u matrices
+        bad = [core_dynamics.Dynamics(np.eye(TestRAOCP.__good_size + 1), np.ones((TestRAOCP.__good_size + 1, 1))),
+               core_dynamics.Dynamics(np.eye(TestRAOCP.__good_size), np.ones((TestRAOCP.__good_size, 1)))]
 
         # construct problem with error catch
         with self.assertRaises(ValueError):
-            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
-
-    def test_markovian_control_dynamics_failure(self):
-        tree = TestRAOCP.__tree_from_markov
-
-        # construct good markovian set of system dynamics
-        system = np.eye(TestRAOCP.__good_size)
-        set_system = [system, 2 * system]  # n x n matrices
-        # construct bad markovian set of control dynamics
-        set_control = [np.ones((TestRAOCP.__good_size + 1, 1)), np.ones((TestRAOCP.__good_size, 1))]  # n x u matrices
-
-        # construct problem with error catch
-        with self.assertRaises(ValueError):
-            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
-
-    def test_markovian_system_and_control_dynamics_failure(self):
-        tree = TestRAOCP.__tree_from_markov
-
-        # construct good markovian set of system dynamics (rows = 3)
-        system = np.eye(TestRAOCP.__good_size)
-        set_system = [system, 2 * system]  # n x n matrices
-        # construct good markovian set of control dynamics  (rows = 4)
-        control = np.ones((TestRAOCP.__good_size + 1, 1))
-        set_control = [control, 2 * control]  # n x u matrices
-
-        # construct problem with error catch
-        with self.assertRaises(ValueError):
-            _ = core_spec.RAOCP(tree).with_markovian_dynamics(set_system, set_control)
+            _ = core_spec.RAOCP(tree).with_markovian_dynamics(bad)
 
 
 if __name__ == '__main__':

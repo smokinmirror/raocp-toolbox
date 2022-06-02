@@ -25,12 +25,15 @@ regular_test() {
 
     # --- run the tests
     # export PYTHONPATH=.
+    python -W ignore tests/test_base_constraint.py -v
     python -W ignore tests/test_cache.py -v
     python -W ignore tests/test_cones.py -v
     python -W ignore tests/test_costs.py -v
     python -W ignore tests/test_dynamics.py -v
+    python -W ignore tests/test_nodes.py -v
     python -W ignore tests/test_operators.py -v
     python -W ignore tests/test_raocp.py -v
+    python -W ignore tests/test_rectangle.py -v
     python -W ignore tests/test_risks.py -v
     python -W ignore tests/test_scenario_tree.py -v
     python -W ignore tests/test_solver.py -v

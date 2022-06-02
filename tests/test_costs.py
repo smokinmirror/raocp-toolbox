@@ -1,5 +1,6 @@
 import unittest
 import raocp.core.costs as core_costs
+import raocp.core.nodes as core_nodes
 import numpy as np
 
 
@@ -15,11 +16,12 @@ class TestCosts(unittest.TestCase):
 
     @staticmethod
     def __construct_classes():
+        (nl, l) = core_nodes.Nonleaf(), core_nodes.Leaf()
         nonleaf_state_weights = TestCosts.__multipliers[0] * np.eye(TestCosts.__size)
         control_weights = TestCosts.__multipliers[1] * np.eye(TestCosts.__size)
         leaf_state_weights = TestCosts.__multipliers[2] * np.eye(TestCosts.__size)
-        TestCosts.__QuadraticNonleaf = core_costs.QuadraticNonleaf(nonleaf_state_weights, control_weights)
-        TestCosts.__QuadraticLeaf = core_costs.QuadraticLeaf(leaf_state_weights)
+        TestCosts.__QuadraticNonleaf = core_costs.Quadratic(nl, nonleaf_state_weights, control_weights)
+        TestCosts.__QuadraticLeaf = core_costs.Quadratic(l, leaf_state_weights)
 
     @classmethod
     def setUpClass(cls) -> None:

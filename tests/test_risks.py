@@ -9,24 +9,34 @@ class TestRisks(unittest.TestCase):
     __num_test_repeats = 100
 
     @staticmethod
-    def __create_test_avar():
-        TestRisks.__AVaR = core_risks.AVaR(0.5, [1 / TestRisks.__test_num_children] * TestRisks.__test_num_children)
+    def _create_test_avar():
+        TestRisks.__AVaR = core_risks.AVaR(0.5)
+        probs = np.array([1 / TestRisks.__test_num_children] * TestRisks.__test_num_children).reshape(-1, 1)
+        TestRisks.__AVaR.probs = probs
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        TestRisks.__create_test_avar()
+        TestRisks._create_test_avar()
 
     def test_alpha_value(self):
         test_alphas = [0, 0.5, 1]
         for i in test_alphas:
-            core_risks.AVaR(i, np.zeros(2))
+            core_risks.AVaR(i)
 
     def test_alpha_value_failure(self):
         test_alphas = [-0.1, 1.1]
         for i in test_alphas:
             with self.assertRaises(ValueError):
-                core_risks.AVaR(i, np.zeros(2))
+                core_risks.AVaR(i)
+
+    def test_probs(self):
+        num = 10
+        probs = np.random.sample(num).reshape(-1, 1)
+        risk = core_risks.AVaR(0)
+        risk.probs = probs
+        self.assertTrue(np.array_equal(risk._AVaR__children_probabilities, probs))
+        self.assertTrue(risk._AVaR__num_children == len(probs))
 
     def test_dimension_check_e(self):
         avar = TestRisks.__AVaR

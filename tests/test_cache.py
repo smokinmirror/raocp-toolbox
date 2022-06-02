@@ -2,6 +2,10 @@ import unittest
 import raocp.core.scenario_tree as core_tree
 import raocp.core.problem_spec as core_spec
 import raocp.core.cache as core_cache
+import raocp.core.dynamics as core_dynamics
+import raocp.core.costs as core_costs
+import raocp.core.nodes as core_nodes
+import raocp.core.risks as core_risks
 import raocp.core.constraints.rectangle as rectangle
 import numpy as np
 import cvxpy as cp
@@ -32,15 +36,22 @@ class TestCache(unittest.TestCase):
             set_system = [system, 2 * system, 3 * system]  # n x n matrices
             control = np.eye(TestCache.__good_size)
             set_control = [control, 2 * control, 3 * control]  # n x u matrices
+            dynamics = [core_dynamics.Dynamics(set_system[0], set_control[0]),
+                        core_dynamics.Dynamics(set_system[1], set_control[1]),
+                        core_dynamics.Dynamics(set_system[2], set_control[2])]
 
             # construct cost weight matrices
-            cost_type = "Quadratic"
-            cost_types = [cost_type] * TestCache.__good_size
-            nonleaf_state_weight = 10 * np.eye(TestCache.__good_size)  # n x n matrix
+            nl = core_nodes.Nonleaf()
+            l = core_nodes.Leaf()
+            nonleaf_state_weight = 10 * np.eye(2)  # n x n matrix
             nonleaf_state_weights = [nonleaf_state_weight, 2 * nonleaf_state_weight, 3 * nonleaf_state_weight]
-            control_weight = np.eye(TestCache.__good_size)  # u x u matrix OR scalar
+            control_weight = np.eye(2)  # u x u matrix OR scalar
             control_weights = [control_weight, 2 * control_weight, 3 * control_weight]
-            leaf_state_weight = 5 * np.eye(TestCache.__good_size)  # n x n matrix
+            nonleaf_costs = [core_costs.Quadratic(nl, nonleaf_state_weights[0], control_weights[0]),
+                             core_costs.Quadratic(nl, nonleaf_state_weights[1], control_weights[1]),
+                             core_costs.Quadratic(nl, nonleaf_state_weights[2], control_weights[2]), ]
+            leaf_state_weight = 5 * np.eye(2)  # n x n matrix
+            leaf_costs = core_costs.Quadratic(l, leaf_state_weight)
 
             # construct constraint min and max
             nonleaf_size = TestCache.__good_size + TestCache.__good_size
@@ -49,19 +60,20 @@ class TestCache(unittest.TestCase):
             nl_max = 2 * np.ones((nonleaf_size, 1))
             l_min = -0.5 * np.ones((leaf_size, 1))
             l_max = 0.5 * np.ones((leaf_size, 1))
-            nl_rect = rectangle.Rectangle(nl_min, nl_max)
-            l_rect = rectangle.Rectangle(l_min, l_max)
+            nl_rect = rectangle.Rectangle(nl, nl_min, nl_max)
+            l_rect = rectangle.Rectangle(l, l_min, l_max)
 
             # define risks
-            (risk_type, alpha) = ("AVaR", 0.5)
+            alpha = 0.5
+            risks = core_risks.AVaR(alpha)
 
             TestCache.__raocp_from_markov = core_spec.RAOCP(scenario_tree=tree) \
-                .with_markovian_dynamics(set_system, set_control) \
-                .with_markovian_nonleaf_costs(cost_types, nonleaf_state_weights, control_weights) \
-                .with_all_leaf_costs(cost_type, leaf_state_weight) \
+                .with_markovian_dynamics(dynamics) \
+                .with_markovian_nonleaf_costs(nonleaf_costs) \
+                .with_all_leaf_costs(leaf_costs) \
                 .with_all_nonleaf_constraints(nl_rect) \
                 .with_all_leaf_constraints(l_rect) \
-                .with_all_risks(risk_type, alpha)
+                .with_all_risks(risks)
 
     @staticmethod
     def _construct_mock_cache():
