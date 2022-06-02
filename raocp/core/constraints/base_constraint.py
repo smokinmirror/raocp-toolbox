@@ -4,7 +4,8 @@ class Constraint:
     """
     Base class for constraints
     """
-    def __init__(self):
+    def __init__(self, node_type):
+        self.__node_type = node_type
         self.__state_size = None
         self.__control_size = None
         self.__state_matrix = None
@@ -17,6 +18,10 @@ class Constraint:
     @property
     def is_active(self):
         raise Exception("Base constraint accessed - actual constraint must not be setup")
+
+    @property
+    def node_type(self):
+        return self.__node_type
 
     @property
     def state_size(self):
@@ -38,19 +43,27 @@ class Constraint:
     @state_size.setter
     def state_size(self, size):
         self.__state_size = size
-        if self.__control_size is None:
+        if self.__node_type.is_nonleaf and self.__control_size is not None:
+            self._set_matrices()
+        elif self.__node_type.is_nonleaf and self.__control_size is None:
+            pass
+        elif self.__node_type.is_leaf:
             self.__control_size = 0
             self._set_matrices()
         else:
-            self._set_matrices()
+            raise Exception("Node type missing")
 
     @control_size.setter
     def control_size(self, size):
         self.__control_size = size
-        if self.__state_size is None:
-            pass
-        else:
+        if self.__node_type.is_nonleaf and self.__state_size is not None:
             self._set_matrices()
+        elif self.__node_type.is_nonleaf and self.__state_size is None:
+            pass
+        elif self.__node_type.is_leaf:
+            raise Exception("Attempt to set control size on leaf node")
+        else:
+            raise Exception("Node type missing")
 
     def _set_matrices(self):
         pass

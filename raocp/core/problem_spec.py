@@ -1,10 +1,6 @@
 import numpy as np
-
 import raocp.core.scenario_tree as core_tree
-import raocp.core.dynamics as core_dynamics
-import raocp.core.costs as core_costs
 import raocp.core.constraints as core_constraints
-import raocp.core.risks as core_risks
 
 
 class RAOCP:
@@ -90,113 +86,119 @@ class RAOCP:
 
     # Dynamics ---------------------------------------------------------------------------------------------------------
 
-    def with_markovian_dynamics(self, ordered_list_of_state_dynamics, ordered_list_of_control_dynamics):
-        # check same number of items in both lists
-        if len(ordered_list_of_state_dynamics) != len(ordered_list_of_control_dynamics):
-            raise ValueError("number of Markovian state dynamics matrices not equal to "
-                             "number of Markovian control dynamics matrices")
-        for i in range(len(ordered_list_of_state_dynamics)):
+    def with_markovian_dynamics(self, ordered_list_of_dynamics):
+        for i in range(len(ordered_list_of_dynamics)):
             # check all state dynamics have same shape
-            if ordered_list_of_state_dynamics[i].shape != ordered_list_of_state_dynamics[0].shape:
+            if ordered_list_of_dynamics[i].state_dynamics.shape != ordered_list_of_dynamics[0].state_dynamics.shape:
                 raise ValueError("Markovian state dynamics matrices are different shapes")
             # check if all control dynamics have same shape
-            if ordered_list_of_control_dynamics[i].shape != ordered_list_of_control_dynamics[0].shape:
+            if ordered_list_of_dynamics[i].control_dynamics.shape != ordered_list_of_dynamics.control_dynamics[0].shape:
                 raise ValueError("Markovian control dynamics matrices are different shapes")
 
-        # load "No Constraint" into constraints list with state and control sizes
+        # load "No Constraint" into constraints list
         for i in range(self.__num_nodes):
             if i < self.__num_nonleaf_nodes:
                 self.__list_of_nonleaf_constraints[i] = core_constraints.No()
-            if i >= self.__num_nonleaf_nodes:
+            else:
                 self.__list_of_leaf_constraints[i] = core_constraints.No()
 
         # check that scenario tree provided is Markovian
         if self.__tree.is_markovian:
             for i in range(1, self.__num_nodes):
-                self.__list_of_dynamics[i] = core_dynamics.Dynamics(
-                    ordered_list_of_state_dynamics[self.__tree.value_at_node(i)],
-                    ordered_list_of_control_dynamics[self.__tree.value_at_node(i)])
+                self.__list_of_dynamics[i] = ordered_list_of_dynamics[self.__tree.value_at_node(i)]
             return self
         else:
             raise TypeError("dynamics provided as Markovian, scenario tree provided is not Markovian")
 
     # Costs ------------------------------------------------------------------------------------------------------------
 
-    def with_markovian_costs(self, ordered_list_of_cost_types, ordered_list_of_state_weights,
-                             ordered_list_of_control_weights):
-        # check same number of items in lists
-        if sum((len(ordered_list_of_cost_types),
-                len(ordered_list_of_state_weights),
-                len(ordered_list_of_control_weights))) / 3 != len(ordered_list_of_cost_types):
-            raise ValueError("Markovian costs lists provided are not of equal sizes")
+    def with_markovian_nonleaf_costs(self, ordered_list_of_costs):
+        # check costs are nonleaf
+        for costs in ordered_list_of_costs:
+            if not costs.node_type.is_nonleaf:
+                raise Exception("Markovian costs provided are not nonleaf")
+
         # check that scenario tree is Markovian
         if self.__tree.is_markovian:
             for i in range(1, self.__tree.num_nodes):
-                if ordered_list_of_cost_types[self.__tree.value_at_node(i)] == "Quadratic":
-                    self.__list_of_nonleaf_costs[i] = core_costs.QuadraticNonleaf(
-                        ordered_list_of_state_weights[self.__tree.value_at_node(i)],
-                        ordered_list_of_control_weights[self.__tree.value_at_node(i)])
-                else:
-                    raise ValueError("cost type '%s' not supported" % ordered_list_of_cost_types[i])
+                self.__list_of_nonleaf_costs[i] = ordered_list_of_costs[self.__tree.value_at_node(i)]
+
             return self
         else:
             raise TypeError("costs provided as Markovian, scenario tree provided is not Markovian")
 
-    def with_all_nonleaf_costs(self, cost_type, nonleaf_state_weights, control_weights):
-        if cost_type == "Quadratic":
-            for i in range(self.__tree.num_nonleaf_nodes):
-                self.__list_of_nonleaf_costs[i] = core_costs.QuadraticNonleaf(nonleaf_state_weights, control_weights)
-            return self
-        else:
-            raise ValueError("cost type '%s' not supported" % cost_type)
+    def with_all_nonleaf_costs(self, cost):
+        # check cost are nonleaf
+        if not cost.node_type.is_nonleaf:
+            raise Exception("Nonleaf cost provided is not nonleaf")
+        for i in range(1, self.__tree.num_nodes):
+            self.__list_of_nonleaf_costs[i] = cost
 
-    def with_all_leaf_costs(self, cost_type, leaf_state_weights):
-        if cost_type == "Quadratic":
-            for i in range(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes):
-                self.__list_of_leaf_costs[i] = core_costs.QuadraticLeaf(leaf_state_weights)
-            return self
-        else:
-            raise ValueError("cost type '%s' not supported" % cost_type)
+        return self
+
+    def with_all_leaf_costs(self, cost):
+        # check cost are leaf
+        if not cost.node_type.is_leaf:
+            raise Exception("Leaf cost provided is not leaf")
+        for i in range(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes):
+            self.__list_of_leaf_costs[i] = cost
+
+        return self
 
     # Constraints ------------------------------------------------------------------------------------------------------
 
-    def with_markovian_constraints(self, ordered_list_of_constraints):
+    def with_markovian_nonleaf_constraints(self, ordered_list_of_constraints):
         self._check_dynamics_before_constraints()
+        # check constraints are nonleaf
+        for con in ordered_list_of_constraints:
+            if not con.node_type.is_nonleaf:
+                raise Exception("Nonleaf constraints provided are not nonleaf")
         # check that scenario tree is Markovian
         if self.__tree.is_markovian:
             for i in range(1, self.__tree.num_nodes):
-                self.__list_of_nonleaf_constraints[i] = ordered_list_of_constraints[self.__tree.value_at_node(i)] \
-                    .set_state(self.__list_of_dynamics[-1].state_dynamics.shape[1]) \
-                    .set_control(self.__list_of_dynamics[-1].control_dynamics.shape[1])
+                constraint = ordered_list_of_constraints[self.__tree.value_at_node(i)]
+                constraint.state_size(self.__list_of_dynamics[-1].state_dynamics.shape[1])
+                if i < self.__num_nonleaf_nodes:
+                    constraint.control_size(self.__list_of_dynamics[-1].control_dynamics.shape[1])
+                self.__list_of_nonleaf_constraints[i] = constraint
+
             return self
         else:
             raise TypeError("constraints provided as Markovian, scenario tree provided is not Markovian")
 
     def with_all_nonleaf_constraints(self, nonleaf_constraint):
         self._check_dynamics_before_constraints()
+        # check constraints are nonleaf
+        if not nonleaf_constraint.node_type.is_nonleaf:
+            raise Exception("Nonleaf constraint provided is not nonleaf")
+        nonleaf_constraint.state_size = self.__list_of_dynamics[-1].state_dynamics.shape[1]
+        nonleaf_constraint.control_size = self.__list_of_dynamics[-1].control_dynamics.shape[1]
         for i in range(self.__tree.num_nonleaf_nodes):
-            self.__list_of_nonleaf_constraints[i] = nonleaf_constraint\
-                .state_size(self.__list_of_dynamics[-1].state_dynamics.shape[1]) \
-                .control_size(self.__list_of_dynamics[-1].control_dynamics.shape[1])
+            self.__list_of_nonleaf_constraints[i] = nonleaf_constraint
+
         return self
 
     def with_all_leaf_constraints(self, leaf_constraint):
         self._check_dynamics_before_constraints()
+        if not leaf_constraint.node_type.is_leaf:
+            raise Exception("Leaf constraint provided is not leaf")
+        leaf_constraint.state_size = self.__list_of_dynamics[-1].state_dynamics.shape[1]
         for i in range(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes):
-            self.__list_of_leaf_constraints[i] = leaf_constraint \
-                .set_state(self.__list_of_dynamics[-1].state_dynamics.shape[1]) \
-                .set_control(self.__list_of_dynamics[-1].control_dynamics.shape[1])
+            self.__list_of_leaf_constraints[i] = leaf_constraint
+
         return self
 
     # Risks ------------------------------------------------------------------------------------------------------------
 
-    def with_all_risks(self, risk_type, alpha):
-        if risk_type == "AVaR":
-            for i in range(self.__tree.num_nonleaf_nodes):
-                self.__list_of_risks[i] = core_risks.AVaR(alpha, self.__tree.conditional_probabilities_of_children(i))
-            return self
-        else:
-            raise ValueError("risk type '%s' not supported" % risk_type)
+    def with_all_risks(self, risk):
+        # check risk type
+        if not risk.is_risk:
+            raise Exception("Risk provided is not of risk type")
+        for i in range(self.__tree.num_nonleaf_nodes):
+            risk.probs = self.__tree.conditional_probabilities_of_children(i)
+            self.__list_of_risks[i] = risk
+
+        return self
 
     # Class ------------------------------------------------------------------------------------------------------------
 

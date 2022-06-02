@@ -6,12 +6,13 @@ class Rectangle(bc.Constraint):
     """
     A rectangle constraint
     """
-    def __init__(self, _min=None, _max=None):
+    def __init__(self, node_type, _min, _max):
         """
+        :param node_type: nonleaf or leaf
         :param _min: vector of minimum values
         :param _max: vector of maximum values
         """
-        super().__init__()
+        super().__init__(node_type)
         self._check_constraints(_min, _max)
         self.__min = _min
         self.__max = _max

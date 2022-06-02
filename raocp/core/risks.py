@@ -7,21 +7,20 @@ class AVaR:
     Risk item: Average Value at Risk class
     """
 
-    def __init__(self, alpha, probabilities):
+    def __init__(self, alpha):
         """
         :param alpha: AVaR risk parameter
-        :param probabilities: list of probabilities of future events
 
         Note: ambiguity sets of coherent risk measures can be expressed by conic inequalities,
                 defined by a tuple (E, F, cone, b)
         """
+        self.__probs = None  # list of probabilities of future events
+        self.__num_children = None
+        self.__children_probabilities = None
         if 0 <= alpha <= 1:
             self.__alpha = alpha
         else:
             raise ValueError("alpha value '%d' not supported" % alpha)
-        self.__num_children = len(probabilities)
-        self.__children_probabilities = np.asarray(probabilities).reshape(self.__num_children, 1)
-
         self.__matrix_e = None  # coefficient matrix of mu
         self.__matrix_f = None  # coefficient matrix of nu
         self.__cone = None
@@ -37,6 +36,10 @@ class AVaR:
         self.__vector_b = np.vstack((self.__children_probabilities, np.zeros((self.__num_children, 1)), 1))
 
     # GETTERS
+    @property
+    def is_risk(self):
+        return True
+
     @property
     def alpha(self):
         """AVaR risk parameter alpha"""
@@ -61,6 +64,17 @@ class AVaR:
     def vector_b(self):
         """Ambiguity set vector b"""
         return self.__vector_b
+
+    @property
+    def probs(self):
+        return self.__probs
+
+    # SETTERS
+    @probs.setter
+    def probs(self, list_of_probs):
+        self.__probs = list_of_probs
+        self.__num_children = len(list_of_probs)
+        self.__children_probabilities = np.asarray(list_of_probs).reshape(self.__num_children, 1)
 
     def __str__(self):
         return f"Risk item; type: {type(self).__name__}, alpha: {self.__alpha}; cone: {self.__cone.types}"

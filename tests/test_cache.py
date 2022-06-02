@@ -57,7 +57,7 @@ class TestCache(unittest.TestCase):
 
             TestCache.__raocp_from_markov = core_spec.RAOCP(scenario_tree=tree) \
                 .with_markovian_dynamics(set_system, set_control) \
-                .with_markovian_costs(cost_types, nonleaf_state_weights, control_weights) \
+                .with_markovian_nonleaf_costs(cost_types, nonleaf_state_weights, control_weights) \
                 .with_all_leaf_costs(cost_type, leaf_state_weight) \
                 .with_all_nonleaf_constraints(nl_rect) \
                 .with_all_leaf_constraints(l_rect) \
