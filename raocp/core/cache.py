@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.optimize
-import raocp.core.problem_spec as ps
-import raocp.core.cones as cones
+import raocp.core.constraints.cones as cones
+import raocp.core.raocp_spec as ps
 import raocp.core.risks as risks
 
 
@@ -95,7 +95,7 @@ class Cache:
                                 f"candidate shape: {candidate_primal[i].shape},\n"
                                 f"current shape: {self.__old_primal[i].shape}")
             else:
-                self.__primal[i] = candidate_primal[i]
+                self.__primal[i] = candidate_primal[i].copy()
 
     def set_dual(self, candidate_dual):
         dual_length = len(self.__dual_cache[0])
@@ -116,7 +116,7 @@ class Cache:
                                 f"candidate shape: {candidate_dual[i].shape},\n"
                                 f"current shape: {self.__old_dual[i].shape}")
             else:
-                self.__dual[i] = candidate_dual[i]
+                self.__dual[i] = candidate_dual[i].copy()
 
     # CREATE ###########################################################################################################
 
@@ -137,27 +137,34 @@ class Cache:
     def _create_dual(self):
         # parts 3, 4, 5 and 6 of parent node put in children nodes for simple storage
         self.__segment_d = [None, 0,  # start of part 1
-                            self.__num_nonleaf_nodes * 1,  # start of part 2
-                            self.__num_nonleaf_nodes * 2,  # start of part 3
-                            self.__num_nonleaf_nodes * 2 + self.__num_nodes * 1,  # start of part 4
-                            self.__num_nonleaf_nodes * 2 + self.__num_nodes * 2,  # start of part 5
-                            self.__num_nonleaf_nodes * 2 + self.__num_nodes * 3,  # start of part 6
-                            self.__num_nonleaf_nodes * 2 + self.__num_nodes * 4,  # start of part 7
-                            self.__num_nonleaf_nodes * 3 + self.__num_nodes * 4,  # end of part 7
+                            self.__num_nodes * 1,  # start of part 2
+                            self.__num_nodes * 2,  # start of part 3
+                            self.__num_nodes * 3,  # start of part 4
+                            self.__num_nodes * 4,  # start of part 5
+                            self.__num_nodes * 5,  # start of part 6
+                            self.__num_nodes * 6,  # start of part 7
+                            self.__num_nodes * 7,  # end of part 7
                             None, None,  # miss 8, 9, 10
-                            self.__num_nonleaf_nodes * 3 + self.__num_nodes * 4,  # start of part 11
-                            self.__num_nonleaf_nodes * 3 + self.__num_nodes * 5,  # start of part 12
-                            self.__num_nonleaf_nodes * 3 + self.__num_nodes * 6,  # start of part 13
-                            self.__num_nonleaf_nodes * 3 + self.__num_nodes * 7,  # start of part 14
-                            self.__num_nonleaf_nodes * 3 + self.__num_nodes * 8]  # end of part 14
+                            self.__num_nodes * 7,  # start of part 11
+                            self.__num_nodes * 8,  # start of part 12
+                            self.__num_nodes * 9,  # start of part 13
+                            self.__num_nodes * 10,  # start of part 14
+                            self.__num_nodes * 11]  # end of part 14
         self.__dual = [np.zeros((1, 1))] * self.__segment_d[-1]
         for i in range(self.__num_nodes):
             if i < self.__num_nonleaf_nodes:
                 self.__dual[self.__segment_d[1] + i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
-            self.__dual[self.__segment_d[3] + i] = np.zeros((self.__state_size, 1))
-            self.__dual[self.__segment_d[4] + i] = np.zeros((self.__control_size, 1))
+            if i > 0:
+                self.__dual[self.__segment_d[3] + i] = np.zeros((self.__state_size, 1))
+                self.__dual[self.__segment_d[4] + i] = np.zeros((self.__control_size, 1))
+                if self.__raocp.nonleaf_constraint_at_node(i).is_active:
+                    self.__dual[self.__segment_d[7] + i] = np.zeros((self.__raocp.nonleaf_constraint_at_node(i)
+                                                                     .state_matrix.shape[0], 1))
             if i >= self.__num_nonleaf_nodes:
                 self.__dual[self.__segment_d[11] + i] = np.zeros((self.__state_size, 1))
+                if self.__raocp.leaf_constraint_at_node(i).is_active:
+                    self.__dual[self.__segment_d[14] + i] = np.zeros((self.__raocp.leaf_constraint_at_node(i)
+                                                                      .state_matrix.shape[0], 1))
 
     def _create_cones(self):
         self.__nonleaf_dual_cone = []
@@ -341,7 +348,7 @@ class Cache:
         for i in range(self.__num_nonleaf_nodes):
             self.__dual[self.__segment_d[1] + i] = self.__nonleaf_dual_cone[i] \
                 .project_onto_dual([self.__dual[self.__segment_d[1] + i]])
-            self.__dual[self.__segment_d[2] + i] = self.__nonleaf_nonnegorth_cone[i]\
+            self.__dual[self.__segment_d[2] + i] = self.__nonleaf_nonnegorth_cone[i] \
                 .project(self.__dual[self.__segment_d[2] + i])
             for j in self.__raocp.tree.children_of(i):
                 start = 3
@@ -356,9 +363,9 @@ class Cache:
                 for k in range(start, end):
                     self.__dual[self.__segment_d[k] + j] = soc_projection[size[k - 1]: size[k]]
 
-            if self.__raocp.nonleaf_constraint_at_node(i).is_active:
-                self.__dual[self.__segment_d[7] + i] = self.__raocp.nonleaf_constraint_at_node(i)\
-                    .project(self.__dual[self.__segment_d[7] + i])
+                if self.__raocp.nonleaf_constraint_at_node(j).is_active:
+                    self.__dual[self.__segment_d[7] + j] = self.__raocp.nonleaf_constraint_at_node(j) \
+                        .project(self.__dual[self.__segment_d[7] + j])
 
     def project_on_constraints_leaf(self):
         # algo 7

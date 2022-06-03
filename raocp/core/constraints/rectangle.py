@@ -1,5 +1,5 @@
-import raocp.core.constraints.base_constraint as bc
 import numpy as np
+import raocp.core.constraints.base_constraint as bc
 
 
 class Rectangle(bc.Constraint):
@@ -24,8 +24,9 @@ class Rectangle(bc.Constraint):
     def _set_matrices(self):
         state_diag = np.hstack((np.ones(self.state_size), np.zeros(self.control_size)))
         self.state_matrix = np.diagflat(state_diag)
-        control_diag = np.hstack((np.zeros(self.state_size), np.ones(self.control_size)))
-        self.control_matrix = np.diagflat(control_diag)
+        if self._Constraint__node_type.is_nonleaf:
+            control_diag = np.hstack((np.zeros(self.state_size), np.ones(self.control_size)))
+            self.control_matrix = np.diagflat(control_diag)
 
     def project(self, vector):
         self._check_input(vector)

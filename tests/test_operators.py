@@ -1,13 +1,13 @@
 import unittest
 import numpy as np
-import raocp.core.scenario_tree as core_tree
-import raocp.core.problem_spec as core_spec
 import raocp.core.cache as core_cache
-import raocp.core.dynamics as core_dynamics
 import raocp.core.costs as core_costs
-import raocp.core.risks as core_risks
+import raocp.core.dynamics as core_dynamics
 import raocp.core.nodes as core_nodes
 import raocp.core.operators as core_operators
+import raocp.core.raocp_spec as core_spec
+import raocp.core.risks as core_risks
+import raocp.core.scenario_tree as core_tree
 
 
 class TestOperators(unittest.TestCase):
@@ -23,7 +23,7 @@ class TestOperators(unittest.TestCase):
             p = np.array([[0.1, 0.8, 0.1],
                           [0.4, 0.6, 0],
                           [0, 0.3, 0.7]])
-            v = np.array([0.5, 0.5, 0])
+            v = np.array([0.5, 0.4, 0.1])
             (N, tau) = (4, 3)
             TestOperators.__tree_from_markov = core_tree.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 

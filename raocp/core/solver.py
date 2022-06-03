@@ -1,7 +1,8 @@
 import numpy as np
-import raocp.core.problem_spec as ps
 import raocp.core.cache as cache
 import raocp.core.operators as ops
+import raocp.core.raocp_spec as spec
+
 import matplotlib.pyplot as plt
 
 
@@ -10,7 +11,7 @@ class Solver:
     Solver for RAOCPs using proximal algorithms
     """
 
-    def __init__(self, problem_spec: ps.RAOCP):
+    def __init__(self, problem_spec: spec.RAOCP):
         self.__raocp = problem_spec
         self.__cache = cache.Cache(self.__raocp)
         self.__operator = ops.Operator(self.__cache)
@@ -142,5 +143,3 @@ class Solver:
         plt.xlabel(r"iteration", fontsize=12)
         plt.legend(("xi_0", "xi_1", "xi_2"))
         plt.show()
-
-        print(np.allclose(error_cache[:, 0], error_cache[:, 1]))

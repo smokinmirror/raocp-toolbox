@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-import raocp.core.constraints.rectangle as bc
 import raocp.core.nodes as nodes
+import raocp.core.constraints.rectangle as bc
 
 
 class TestRectangle(unittest.TestCase):
@@ -26,8 +26,11 @@ class TestRectangle(unittest.TestCase):
 
     def test_check_constraints_failure(self):
         bad_max = np.delete(TestRectangle.__max, 0)
+        _none = np.asarray([None] * (TestRectangle.__state_size + TestRectangle.__control_size)).reshape(-1, 1)
         with self.assertRaises(Exception):
             _ = bc.Rectangle(TestRectangle.__nonleaf, TestRectangle.__min, bad_max)
+        with self.assertRaises(Exception):
+            _ = bc.Rectangle(TestRectangle.__nonleaf, _none, _none)
         with self.assertRaises(Exception):
             _ = bc.Rectangle(TestRectangle.__nonleaf, TestRectangle.__max, TestRectangle.__min)
 

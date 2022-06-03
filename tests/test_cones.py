@@ -1,6 +1,6 @@
 import unittest
-import raocp.core.cones as core_cones
 import numpy as np
+import raocp.core.constraints.cones as core_cones
 
 
 class TestCones(unittest.TestCase):

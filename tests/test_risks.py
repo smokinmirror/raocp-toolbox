@@ -1,6 +1,6 @@
 import unittest
-import raocp.core.risks as core_risks
 import numpy as np
+import raocp.core.risks as core_risks
 
 
 class TestRisks(unittest.TestCase):
@@ -19,6 +19,9 @@ class TestRisks(unittest.TestCase):
         super().setUpClass()
         TestRisks._create_test_avar()
 
+    def test_is_risk(self):
+        self.assertTrue(core_risks.AVaR.is_risk)
+
     def test_alpha_value(self):
         test_alphas = [0, 0.5, 1]
         for i in test_alphas:
@@ -35,7 +38,7 @@ class TestRisks(unittest.TestCase):
         probs = np.random.sample(num).reshape(-1, 1)
         risk = core_risks.AVaR(0)
         risk.probs = probs
-        self.assertTrue(np.array_equal(risk._AVaR__children_probabilities, probs))
+        self.assertTrue(np.array_equal(risk.probs, probs))
         self.assertTrue(risk._AVaR__num_children == len(probs))
 
     def test_dimension_check_e(self):

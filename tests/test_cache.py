@@ -1,14 +1,14 @@
 import unittest
-import raocp.core.scenario_tree as core_tree
-import raocp.core.problem_spec as core_spec
-import raocp.core.cache as core_cache
-import raocp.core.dynamics as core_dynamics
-import raocp.core.costs as core_costs
-import raocp.core.nodes as core_nodes
-import raocp.core.risks as core_risks
-import raocp.core.constraints.rectangle as rectangle
 import numpy as np
 import cvxpy as cp
+import raocp.core.cache as core_cache
+import raocp.core.costs as core_costs
+import raocp.core.dynamics as core_dynamics
+import raocp.core.nodes as core_nodes
+import raocp.core.raocp_spec as core_spec
+import raocp.core.risks as core_risks
+import raocp.core.scenario_tree as core_tree
+import raocp.core.constraints.rectangle as rectangle
 
 
 class TestCache(unittest.TestCase):
@@ -112,7 +112,7 @@ class TestCache(unittest.TestCase):
         mock_cache, seg_p, _ = self._construct_mock_cache()
         _, prim = mock_cache.get_primal()  # template
         for i in range(seg_p[1], seg_p[3]):
-            prim[i] = 3 * np.ones(prim[i].size).reshape(-1, 1)  # np.random.randn(prim[i].size).reshape(-1, 1)
+            prim[i] = np.random.randn(prim[i].size).reshape(-1, 1)
 
         # solve with dp
         mock_cache.cache_initial_state(prim[seg_p[1]])
@@ -225,6 +225,23 @@ class TestCache(unittest.TestCase):
         for i in range(seg_d[1], seg_d[15]):
             dual[i] = np.random.randn(dual[i].size).reshape(-1, 1)
 
+        mock_cache.set_dual(dual)
+        mock_cache.project_on_constraints_nonleaf()
+        new_dual, _ = mock_cache.get_dual()
+        for i in range(len(dual)):
+            self.assertTrue(new_dual[i].shape == dual[i].shape)
+
+    def test_project_on_constraints_leaf(self):
+        mock_cache, _, seg_d = self._construct_mock_cache()
+        _, dual = mock_cache.get_dual()
+        for i in range(seg_d[1], seg_d[15]):
+            dual[i] = np.random.randn(dual[i].size).reshape(-1, 1)
+
+        mock_cache.set_dual(dual)
+        mock_cache.project_on_constraints_leaf()
+        new_dual, _ = mock_cache.get_dual()
+        for i in range(len(dual)):
+            self.assertTrue(new_dual[i].shape == dual[i].shape)
 
     def test_modify_projection(self):
         mock_cache, _, seg_d = self._construct_mock_cache()

@@ -1,5 +1,5 @@
 import numpy as np
-import raocp.core.cones as core_cones
+import raocp.core.constraints.cones as core_cones
 
 
 class AVaR:

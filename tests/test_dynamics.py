@@ -1,6 +1,6 @@
 import unittest
-import raocp.core.dynamics as core_dynamics
 import numpy as np
+import raocp.core.dynamics as core_dynamics
 
 
 class TestDynamics(unittest.TestCase):
