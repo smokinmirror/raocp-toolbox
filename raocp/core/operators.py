@@ -1,4 +1,6 @@
+import numpy as np
 import raocp.core.cache as core_cache
+from scipy.sparse.linalg import LinearOperator
 
 
 class Operator:
@@ -12,6 +14,8 @@ class Operator:
         self.__num_nodes = self.__raocp.tree.num_nodes
         self.__segment_p = cache.get_primal_segments()
         self.__segment_d = cache.get_dual_segments()
+        _, self.__template_p = cache.get_primal()
+        _, self.__template_d = cache.get_dual()
 
     def ell(self, input_primal, output_dual):
         # create sections for ease of access
@@ -35,9 +39,10 @@ class Operator:
                 output_dual[self.__segment_d[5] + j] = half_tau
                 output_dual[self.__segment_d[6] + j] = half_tau
                 if self.__raocp.nonleaf_constraint_at_node(j).is_active:
+                    states_and_controls = np.vstack((states[i], controls[i]))
                     output_dual[self.__segment_d[7] + j] = \
-                        self.__raocp.nonleaf_constraint_at_node(j).state_matrix @ states[i] + \
-                        self.__raocp.nonleaf_constraint_at_node(j).control_matrix @ controls[i]
+                        self.__raocp.nonleaf_constraint_at_node(j).state_matrix @ states_and_controls + \
+                        self.__raocp.nonleaf_constraint_at_node(j).control_matrix @ states_and_controls
 
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             output_dual[self.__segment_d[11] + i] = \
@@ -73,10 +78,10 @@ class Operator:
                 if self.__raocp.nonleaf_constraint_at_node(j).is_active:
                     output_primal[self.__segment_p[1] + i] = output_primal[self.__segment_p[1] + i] + \
                         (self.__raocp.nonleaf_constraint_at_node(j).state_matrix_transposed @
-                         dual_7[j]).reshape(-1, 1)
+                         dual_7[j]).reshape(-1, 1)[0: self.__raocp.state_dynamics_at_node(1).shape[1]]
                     output_primal[self.__segment_p[2] + i] = output_primal[self.__segment_p[2] + i] + \
                         (self.__raocp.nonleaf_constraint_at_node(j).control_matrix_transposed @
-                         dual_7[j]).reshape(-1, 1)
+                         dual_7[j]).reshape(-1, 1)[self.__raocp.state_dynamics_at_node(1).shape[1]:]
                 output_primal[self.__segment_p[1] + i] = output_primal[self.__segment_p[1] + i] + \
                     (self.__raocp.nonleaf_cost_at_node(j).sqrt_state_weights @ dual_3[j])
                 output_primal[self.__segment_p[2] + i] = output_primal[self.__segment_p[2] + i] + \
@@ -89,3 +94,29 @@ class Operator:
                 output_primal[self.__segment_p[1] + i] = output_primal[self.__segment_p[1] + i] + \
                     (self.__raocp.leaf_constraint_at_node(i).state_matrix_transposed @ dual_14[i]).reshape(-1, 1)
             output_primal[self.__segment_p[5] + i] = 0.5 * (dual_12[i] + dual_13[i])
+
+    def linop_ell(self, flat_primal):
+        prim = self.__template_p.copy()
+        dual = self.__template_d.copy()
+        cursor = 0
+        for i in range(len(self.__template_p)):
+            cursor_next = cursor + self.__template_p[i].size
+            prim[i] = flat_primal[cursor: cursor_next].reshape(-1, 1)
+            cursor = cursor_next
+
+        self.ell(prim, dual)
+        flat_dual = np.vstack(dual)
+        return flat_dual
+
+    def linop_ell_transpose(self, flat_dual):
+        prim = self.__template_p.copy()
+        dual = self.__template_d.copy()
+        cursor = 0
+        for i in range(len(self.__template_d)):
+            cursor_next = cursor + self.__template_d[i].size
+            dual[i] = flat_dual[cursor: cursor_next].reshape(-1, 1)
+            cursor = cursor_next
+
+        self.ell_transpose(dual, prim)
+        flat_prim = np.vstack(prim)
+        return flat_prim

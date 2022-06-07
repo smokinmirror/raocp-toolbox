@@ -334,6 +334,44 @@ class TestOperators(unittest.TestCase):
         inner_prim, inner_dual = TestOperators.inner_product(rand_prim, ell_t_dual, rand_dual, ell_prim)
         self.assertAlmostEqual(inner_prim[0, 0], inner_dual[0, 0])
 
+    def test_linop_ell(self):
+        seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+
+        # create random values for primal
+        for i in range(len(rand_prim)):
+            rand_prim[i] = np.random.randn(rand_prim[i].size).reshape((-1, 1))
+
+        # flatten primal
+        flat_rand_prim = np.vstack(rand_prim)
+
+        # get dual from ell and flatten
+        TestOperators.__operators_from_cache.ell(rand_prim, ell_prim)
+        flat_unwrapped = np.vstack(ell_prim)
+
+        # get dual from ell wrapper
+        flat_wrapped = TestOperators.__operators_from_cache.linop_ell(flat_rand_prim)
+
+        self.assertTrue(np.array_equal(flat_unwrapped, flat_wrapped))
+
+    def test_linop_ell_transpose(self):
+        seg_prim, seg_dual, rand_prim, rand_dual, ell_t_dual, ell_prim = TestOperators.setup()
+
+        # create random values for dual
+        for i in range(len(rand_dual)):
+            rand_dual[i] = np.random.randn(rand_dual[i].size).reshape((-1, 1))
+
+        # flatten dual
+        flat_rand_dual = np.vstack(rand_dual)
+
+        # get primal from ell_transpose and flatten
+        TestOperators.__operators_from_cache.ell_transpose(rand_dual, ell_t_dual)
+        flat_unwrapped = np.vstack(ell_t_dual)
+
+        # get primal from ell_transpose wrapper
+        flat_wrapped = TestOperators.__operators_from_cache.linop_ell_transpose(flat_rand_dual)
+
+        self.assertTrue(np.array_equal(flat_unwrapped, flat_wrapped))
+
 
 if __name__ == '__main__':
     unittest.main()

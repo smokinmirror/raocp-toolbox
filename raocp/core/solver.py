@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.sparse.linalg import LinearOperator, eigs
+import time
 import raocp.core.cache as cache
 import raocp.core.operators as ops
 import raocp.core.raocp_spec as spec
@@ -18,7 +20,6 @@ class Solver:
         self.__initial_state = None
         self.__parameter_1 = None
         self.__parameter_2 = None
-        self.__xi = [None] * 3
         self.__error = [np.zeros(1)] * 3
 
     def primal_k_plus_half(self):
@@ -57,10 +58,13 @@ class Solver:
     def dual_k_plus_one(self):
         self.__cache.proximal_of_g_conjugate(self.__parameter_2)
 
-    def _calculate_errors(self):
+    def _calculate_chock_errors(self):
         # in this function, p = primal and d = dual
         p_new, p = self.__cache.get_primal()
         d_new, d = self.__cache.get_dual()
+        xi_0 = p.copy()
+        xi_1 = p.copy()
+        xi_2 = d.copy()
 
         # error 1
         p_minus_p_new = [a_i - b_i for a_i, b_i in zip(p, p_new)]
@@ -68,30 +72,48 @@ class Solver:
         d_minus_d_new = [a_i - b_i for a_i, b_i in zip(d, d_new)]
         _, ell_transpose_d_minus_d_new = self.__cache.get_primal()  # get memory position
         self.__operator.ell_transpose(d_minus_d_new, ell_transpose_d_minus_d_new)
-        self.__xi[1] = [a_i - b_i for a_i, b_i in zip(p_minus_p_new_over_alpha1, ell_transpose_d_minus_d_new)]
+        xi_1 = [a_i - b_i for a_i, b_i in zip(p_minus_p_new_over_alpha1, ell_transpose_d_minus_d_new)]
 
         # error 2
         d_minus_d_new_over_alpha2 = [a_i / self.__parameter_2 for a_i in d_minus_d_new]
         p_new_minus_p = [a_i - b_i for a_i, b_i in zip(p_new, p)]
         _, ell_p_new_minus_p = self.__cache.get_dual()  # get memory position
         self.__operator.ell(p_new_minus_p, ell_p_new_minus_p)
-        self.__xi[2] = [a_i + b_i for a_i, b_i in zip(d_minus_d_new_over_alpha2, ell_p_new_minus_p)]
+        xi_2 = [a_i + b_i for a_i, b_i in zip(d_minus_d_new_over_alpha2, ell_p_new_minus_p)]
 
         # error 0
         _, ell_transpose_error2 = self.__cache.get_primal()  # get memory position
-        self.__operator.ell_transpose(self.__xi[2], ell_transpose_error2)
-        self.__xi[0] = [a_i + b_i for a_i, b_i in zip(self.__xi[1], ell_transpose_error2)]
+        self.__operator.ell_transpose(xi_2, ell_transpose_error2)
+        xi_0 = [a_i + b_i for a_i, b_i in zip(xi_1, ell_transpose_error2)]
 
-    def chock(self, initial_state, alpha1=1.0, alpha2=1.0, max_iters=10, tol=1e-5):
+        return xi_0, xi_1, xi_2
+
+    def chock(self, initial_state, max_iters=10, tol=1e-5):
         """
         Chambolle-Pock algorithm
         """
         self.__initial_state = initial_state
         self.__cache.cache_initial_state(self.__initial_state)
-        self.__parameter_1 = alpha1
-        self.__parameter_2 = alpha2
-        current_iteration = 0
 
+        # find alpha_1 and _2
+        _, prim = self.__cache.get_primal()
+        _, dual = self.__cache.get_dual()
+        size_prim = np.vstack(prim).size
+        size_dual = np.vstack(dual).size
+        ell = LinearOperator(dtype=None, shape=(size_dual, size_prim),
+                             matvec=self.__operator.linop_ell)
+        ell_transpose = LinearOperator(dtype=None, shape=(size_prim, size_dual),
+                                       matvec=self.__operator.linop_ell_transpose)
+        ell_transpose_ell = ell_transpose * ell
+        eigens, _ = eigs(ell_transpose_ell)
+        ell_norm = np.real(max(eigens))
+        one_over_norm = 0.999 / ell_norm
+        self.__parameter_1 = one_over_norm
+        self.__parameter_2 = one_over_norm
+
+        current_iteration = 0
+        print("timer started")
+        tick = time.perf_counter()
         keep_running = True
         while keep_running:
             # run primal part of algorithm
@@ -103,16 +125,16 @@ class Solver:
             self.dual_k_plus_one()
 
             # calculate error
-            self._calculate_errors()
+            xi_0, xi_1, xi_2 = self._calculate_chock_errors()
+            xi = [xi_0, xi_1, xi_2]
             for i in range(3):
-                inf_norm = [np.linalg.norm(a_i, ord=np.inf) for a_i in self.__xi[i]]
+                inf_norm = [np.linalg.norm(a_i, ord=np.inf) for a_i in xi[i]]
                 self.__error[i] = np.linalg.norm(inf_norm, np.inf)
 
             current_error = max(self.__error)
 
             # cache variables
             self.__cache.update_cache()
-
             # cache error
             if current_iteration == 0:
                 error_cache = np.array(self.__error)
@@ -127,14 +149,18 @@ class Solver:
             if keep_running is True:
                 current_iteration += 1
 
-        # primal, _ = self.__cache.get_primal()
-        # seg_p = self.__cache.get_primal_segments()
-        # x = primal[seg_p[1]: seg_p[2]]
-        # u = primal[seg_p[2]: seg_p[3]]
-        # print(f"x =\n"
-        #       f"{x}\n"
-        #       f"u =\n"
-        #       f"{u}\n")
+        tock = time.perf_counter()
+        print(f"timer stopped in {tock - tick:0.4f} seconds")
+
+        primal, _ = self.__cache.get_primal()
+        seg_p = self.__cache.get_primal_segments()
+        x = primal[seg_p[1]: seg_p[2]]
+        u = primal[seg_p[2]: seg_p[3]]
+        print(f"x =\n"
+              f"{x}\n"
+              f"u =\n"
+              f"{u}\n")
+
         width = 3
         plt.semilogy(error_cache[:, 0], linewidth=width, linestyle="solid")
         plt.semilogy(error_cache[:, 1], linewidth=width, linestyle=(0, (5, 10)))
