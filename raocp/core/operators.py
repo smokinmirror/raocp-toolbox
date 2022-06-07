@@ -38,11 +38,11 @@ class Operator:
                 half_tau = (0.5 * relaxation_tau[j]).reshape(-1, 1)
                 output_dual[self.__segment_d[5] + j] = half_tau
                 output_dual[self.__segment_d[6] + j] = half_tau
-                if self.__raocp.nonleaf_constraint_at_node(j).is_active:
-                    states_and_controls = np.vstack((states[i], controls[i]))
-                    output_dual[self.__segment_d[7] + j] = \
-                        self.__raocp.nonleaf_constraint_at_node(j).state_matrix @ states_and_controls + \
-                        self.__raocp.nonleaf_constraint_at_node(j).control_matrix @ states_and_controls
+
+            if self.__raocp.nonleaf_constraint_at_node(i).is_active:
+                output_dual[self.__segment_d[7] + i] = \
+                    self.__raocp.nonleaf_constraint_at_node(i).state_matrix @ states[i] + \
+                    self.__raocp.nonleaf_constraint_at_node(i).control_matrix @ controls[i]
 
         for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             output_dual[self.__segment_d[11] + i] = \
@@ -72,16 +72,15 @@ class Operator:
             output_primal[self.__segment_p[3] + i] = \
                 dual_1[i] - (self.__raocp.risk_at_node(i).vector_b @ dual_2[i]).reshape(-1, 1)
             output_primal[self.__segment_p[5] + i] = dual_2[i]
-            output_primal[self.__segment_p[1] + i] = 0
-            output_primal[self.__segment_p[2] + i] = 0
+            if self.__raocp.nonleaf_constraint_at_node(i).is_active:
+                output_primal[self.__segment_p[1] + i] = \
+                    (self.__raocp.nonleaf_constraint_at_node(i).state_matrix_transposed @ dual_7[i]).reshape(-1, 1)
+                output_primal[self.__segment_p[2] + i] = \
+                    (self.__raocp.nonleaf_constraint_at_node(i).control_matrix_transposed @ dual_7[i]).reshape(-1, 1)
+            else:
+                output_primal[self.__segment_p[1] + i] = 0
+                output_primal[self.__segment_p[2] + i] = 0
             for j in children_of_i:
-                if self.__raocp.nonleaf_constraint_at_node(j).is_active:
-                    output_primal[self.__segment_p[1] + i] = output_primal[self.__segment_p[1] + i] + \
-                        (self.__raocp.nonleaf_constraint_at_node(j).state_matrix_transposed @
-                         dual_7[j]).reshape(-1, 1)[0: self.__raocp.state_dynamics_at_node(1).shape[1]]
-                    output_primal[self.__segment_p[2] + i] = output_primal[self.__segment_p[2] + i] + \
-                        (self.__raocp.nonleaf_constraint_at_node(j).control_matrix_transposed @
-                         dual_7[j]).reshape(-1, 1)[self.__raocp.state_dynamics_at_node(1).shape[1]:]
                 output_primal[self.__segment_p[1] + i] = output_primal[self.__segment_p[1] + i] + \
                     (self.__raocp.nonleaf_cost_at_node(j).sqrt_state_weights @ dual_3[j])
                 output_primal[self.__segment_p[2] + i] = output_primal[self.__segment_p[2] + i] + \

@@ -51,7 +51,7 @@ leaf_cost = costs.Quadratic(l, Pf)
 
 nonleaf_size = num_a + num_b
 leaf_size = num_a
-limit = 1
+limit = 20
 nl_min = -limit * np.ones((nonleaf_size, 1))
 nl_max = limit * np.ones((nonleaf_size, 1))
 l_min = -limit * np.ones((leaf_size, 1))
@@ -66,9 +66,9 @@ problem = r.core.RAOCP(scenario_tree=tree) \
     .with_markovian_dynamics(mark_dynamics) \
     .with_markovian_nonleaf_costs(mark_nl_costs) \
     .with_all_leaf_costs(leaf_cost) \
-    .with_all_risks(risk)
-# .with_all_nonleaf_constraints(nl_rect) \
-# .with_all_leaf_constraints(l_rect)
+    .with_all_risks(risk) \
+    .with_all_nonleaf_constraints(nl_rect) \
+    .with_all_leaf_constraints(l_rect)
 
 # print(problem)
 

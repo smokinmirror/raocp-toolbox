@@ -22,11 +22,9 @@ class Rectangle(bc.Constraint):
         return True
 
     def _set_matrices(self):
-        state_diag = np.hstack((np.ones(self.state_size), np.zeros(self.control_size)))
-        self.state_matrix = np.diagflat(state_diag)
+        self.state_matrix = np.vstack((np.eye(self.state_size), np.zeros((self.control_size, self.state_size))))
         if self._Constraint__node_type.is_nonleaf:
-            control_diag = np.hstack((np.zeros(self.state_size), np.ones(self.control_size)))
-            self.control_matrix = np.diagflat(control_diag)
+            self.control_matrix = np.vstack((np.zeros((self.state_size, self.control_size)), np.eye(self.control_size)))
 
     def project(self, vector):
         self._check_input(vector)

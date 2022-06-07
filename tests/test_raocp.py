@@ -81,7 +81,7 @@ class TestRAOCP(unittest.TestCase):
                 .with_markovian_dynamics(dynamics) \
                 .with_markovian_nonleaf_costs(nonleaf_costs) \
                 .with_all_leaf_costs(leaf_costs) \
-                .with_markovian_nonleaf_constraints([nl_rect, nl_rect, nl_rect]) \
+                .with_all_nonleaf_constraints(nl_rect) \
                 .with_all_leaf_constraints(l_rect) \
                 .with_all_risks(risks)
 
@@ -122,21 +122,22 @@ class TestRAOCP(unittest.TestCase):
     def test_no_constraints_loaded(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov_with_markov = core_spec.RAOCP(scenario_tree=tree)
-        for i in range(1, tree.num_nodes):
-            self.assertTrue(raocp.list_of_nonleaf_constraints[i] is not None)
-            if i >= tree.num_nonleaf_nodes:
+        for i in range(tree.num_nodes):
+            if i < tree.num_nonleaf_nodes:
+                self.assertTrue(raocp.list_of_nonleaf_constraints[i] is not None)
+            else:
                 self.assertTrue(raocp.list_of_leaf_constraints[i] is not None)
 
-    def test_markovian_nonleaf_constraints_list(self):
-        tree = TestRAOCP.__tree_from_markov
-        raocp = TestRAOCP.__raocp_from_markov_with_markov
-        for i in range(1, tree.num_nodes):
-            self.assertTrue(raocp.list_of_nonleaf_constraints[i] is not None)
+    # def test_markovian_nonleaf_constraints_list(self):
+    #     tree = TestRAOCP.__tree_from_markov
+    #     raocp = TestRAOCP.__raocp_from_markov_with_markov
+    #     for i in range(1, tree.num_nodes):
+    #         self.assertTrue(raocp.list_of_nonleaf_constraints[i] is not None)
 
     def test_all_nonleaf_constraints_list(self):
         tree = TestRAOCP.__tree_from_markov
         raocp = TestRAOCP.__raocp_from_markov
-        for i in range(1, tree.num_nodes):
+        for i in range(tree.num_nonleaf_nodes):
             self.assertTrue(raocp.list_of_nonleaf_constraints[i] is not None)
 
     def test_leaf_constraints_list(self):
@@ -163,27 +164,27 @@ class TestRAOCP(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = core_spec.RAOCP(tree).with_markovian_dynamics(bad)
 
-    def test_constraints_before_dynamics_markovian(self):
-        tree = TestRAOCP.__tree_from_markov
-        nl = core_nodes.Nonleaf()
-
-        # construct markovian set of system and control dynamics
-        system = np.eye(2)
-        control = np.eye(2)
-        dynamics = [core_dynamics.Dynamics(system, control),
-                    core_dynamics.Dynamics(system, control),
-                    core_dynamics.Dynamics(system, control)]
-
-        # construct constraint min and max
-        nonleaf_size = TestRAOCP.__good_size + TestRAOCP.__good_size
-        nl_min = -2 * np.ones((nonleaf_size, 1))
-        nl_max = 2 * np.ones((nonleaf_size, 1))
-        nl_rect = rectangle.Rectangle(nl, nl_min, nl_max)
-
-        with self.assertRaises(Exception):
-            TestRAOCP.__raocp_from_markov_with_markov = core_spec.RAOCP(scenario_tree=tree) \
-                .with_markovian_nonleaf_constraints([nl_rect, nl_rect, nl_rect]) \
-                .with_markovian_dynamics(dynamics)
+    # def test_constraints_before_dynamics_markovian(self):
+    #     tree = TestRAOCP.__tree_from_markov
+    #     nl = core_nodes.Nonleaf()
+    #
+    #     # construct markovian set of system and control dynamics
+    #     system = np.eye(2)
+    #     control = np.eye(2)
+    #     dynamics = [core_dynamics.Dynamics(system, control),
+    #                 core_dynamics.Dynamics(system, control),
+    #                 core_dynamics.Dynamics(system, control)]
+    #
+    #     # construct constraint min and max
+    #     nonleaf_size = TestRAOCP.__good_size + TestRAOCP.__good_size
+    #     nl_min = -2 * np.ones((nonleaf_size, 1))
+    #     nl_max = 2 * np.ones((nonleaf_size, 1))
+    #     nl_rect = rectangle.Rectangle(nl, nl_min, nl_max)
+    #
+    #     with self.assertRaises(Exception):
+    #         TestRAOCP.__raocp_from_markov_with_markov = core_spec.RAOCP(scenario_tree=tree) \
+    #             .with_markovian_nonleaf_constraints([nl_rect, nl_rect, nl_rect]) \
+    #             .with_markovian_dynamics(dynamics)
 
     def test_constraints_before_dynamics_nonleaf(self):
         tree = TestRAOCP.__tree_from_markov

@@ -39,8 +39,8 @@ class TestRectangle(unittest.TestCase):
         mock_con.control_size = TestRectangle.__control_size
         mock_con.state_size = TestRectangle.__state_size
         self.assertEqual(mock_con.state_size, TestRectangle.__state_size)
-        diag = np.hstack((np.ones(TestRectangle.__state_size), np.zeros(TestRectangle.__control_size)))
-        state_matrix = np.diagflat(diag)
+        state_matrix = np.vstack((np.eye(TestRectangle.__state_size),
+                                  np.zeros((TestRectangle.__control_size, TestRectangle.__state_size))))
         self.assertTrue(np.array_equal(mock_con.state_matrix, state_matrix))
 
     def test_control_size_and_matrix_setter(self):
@@ -48,8 +48,8 @@ class TestRectangle(unittest.TestCase):
         mock_con.state_size = TestRectangle.__state_size
         mock_con.control_size = TestRectangle.__control_size
         self.assertEqual(mock_con.control_size, TestRectangle.__control_size)
-        diag = np.hstack((np.zeros(TestRectangle.__state_size), np.ones(TestRectangle.__control_size)))
-        control_matrix = np.diagflat(diag)
+        control_matrix = np.vstack((np.zeros((TestRectangle.__state_size, TestRectangle.__control_size)),
+                          np.eye(TestRectangle.__control_size)))
         self.assertTrue(np.array_equal(mock_con.control_matrix, control_matrix))
 
     def test_check_input(self):

@@ -88,9 +88,10 @@ class RAOCP:
 
     def _load_constraints(self):
         # load "No Constraint" into constraints list
-        for i in range(1, self.__num_nodes):
-            self.__list_of_nonleaf_constraints[i] = core_constraints.No()
-            if i >= self.__num_nonleaf_nodes:
+        for i in range(self.__num_nodes):
+            if i < self.__num_nonleaf_nodes:
+                self.__list_of_nonleaf_constraints[i] = core_constraints.No()
+            else:
                 self.__list_of_leaf_constraints[i] = core_constraints.No()
 
     # Dynamics ---------------------------------------------------------------------------------------------------------
@@ -149,24 +150,24 @@ class RAOCP:
 
     # Constraints ------------------------------------------------------------------------------------------------------
 
-    def with_markovian_nonleaf_constraints(self, ordered_list_of_constraints):
-        self._check_dynamics_before_constraints()
-        # check constraints are nonleaf
-        for con in ordered_list_of_constraints:
-            if not con.node_type.is_nonleaf:
-                raise Exception("Nonleaf constraints provided are not nonleaf")
-
-        # check that scenario tree is Markovian
-        if self.__tree.is_markovian:
-            for i in range(1, self.__tree.num_nodes):
-                constraint = deepcopy(ordered_list_of_constraints[self.__tree.value_at_node(i)])
-                constraint.state_size = self.__list_of_dynamics[-1].state_dynamics.shape[1]
-                constraint.control_size = self.__list_of_dynamics[-1].control_dynamics.shape[1]
-                self.__list_of_nonleaf_constraints[i] = constraint
-
-            return self
-        else:
-            raise TypeError("constraints provided as Markovian, scenario tree provided is not Markovian")
+    # def with_markovian_nonleaf_constraints(self, ordered_list_of_constraints):
+    #     self._check_dynamics_before_constraints()
+    #     # check constraints are nonleaf
+    #     for con in ordered_list_of_constraints:
+    #         if not con.node_type.is_nonleaf:
+    #             raise Exception("Nonleaf constraints provided are not nonleaf")
+    #
+    #     # check that scenario tree is Markovian
+    #     if self.__tree.is_markovian:
+    #         for i in range(1, self.__tree.num_nodes):
+    #             constraint = deepcopy(ordered_list_of_constraints[self.__tree.value_at_node(i)])
+    #             constraint.state_size = self.__list_of_dynamics[-1].state_dynamics.shape[1]
+    #             constraint.control_size = self.__list_of_dynamics[-1].control_dynamics.shape[1]
+    #             self.__list_of_nonleaf_constraints[i] = constraint
+    #
+    #         return self
+    #     else:
+    #         raise TypeError("constraints provided as Markovian, scenario tree provided is not Markovian")
 
     def with_all_nonleaf_constraints(self, nonleaf_constraint):
         self._check_dynamics_before_constraints()
@@ -175,7 +176,7 @@ class RAOCP:
             raise Exception("Nonleaf constraint provided is not nonleaf")
         nonleaf_constraint.state_size = self.__list_of_dynamics[-1].state_dynamics.shape[1]
         nonleaf_constraint.control_size = self.__list_of_dynamics[-1].control_dynamics.shape[1]
-        for i in range(1, self.__tree.num_nodes):
+        for i in range(self.__tree.num_nonleaf_nodes):
             self.__list_of_nonleaf_constraints[i] = deepcopy(nonleaf_constraint)
 
         return self

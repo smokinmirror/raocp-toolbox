@@ -154,12 +154,12 @@ class Cache:
         for i in range(self.__num_nodes):
             if i < self.__num_nonleaf_nodes:
                 self.__dual[self.__segment_d[1] + i] = np.zeros((2 * self.__raocp.tree.children_of(i).size + 1, 1))
-            if i > 0:
-                self.__dual[self.__segment_d[3] + i] = np.zeros((self.__state_size, 1))
-                self.__dual[self.__segment_d[4] + i] = np.zeros((self.__control_size, 1))
                 if self.__raocp.nonleaf_constraint_at_node(i).is_active:
                     self.__dual[self.__segment_d[7] + i] = np.zeros((self.__raocp.nonleaf_constraint_at_node(i)
                                                                      .state_matrix.shape[0], 1))
+            if i > 0:
+                self.__dual[self.__segment_d[3] + i] = np.zeros((self.__state_size, 1))
+                self.__dual[self.__segment_d[4] + i] = np.zeros((self.__control_size, 1))
             if i >= self.__num_nonleaf_nodes:
                 self.__dual[self.__segment_d[11] + i] = np.zeros((self.__state_size, 1))
                 if self.__raocp.leaf_constraint_at_node(i).is_active:
@@ -363,9 +363,9 @@ class Cache:
                 for k in range(start, end):
                     self.__dual[self.__segment_d[k] + j] = soc_projection[size[k - 1]: size[k]]
 
-                if self.__raocp.nonleaf_constraint_at_node(j).is_active:
-                    self.__dual[self.__segment_d[7] + j] = self.__raocp.nonleaf_constraint_at_node(j) \
-                        .project(self.__dual[self.__segment_d[7] + j])
+            if self.__raocp.nonleaf_constraint_at_node(i).is_active:
+                self.__dual[self.__segment_d[7] + i] = self.__raocp.nonleaf_constraint_at_node(i) \
+                    .project(self.__dual[self.__segment_d[7] + i])
 
     def project_on_constraints_leaf(self):
         # algo 7
