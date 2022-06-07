@@ -112,6 +112,8 @@ class SecondOrderCone:
 
     def project(self, vector):
         self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        if self.__dimension < 3:
+            raise Exception("Attempt to project a vector of size < 3 onto second order cone")
         self.__shape = vector.shape
         last_part = vector[-1].reshape(1, 1)
         first_part = vector[0:-1]
@@ -124,7 +126,7 @@ class SecondOrderCone:
             return projection
         else:
             projection_of_last_part = (two_norm_of_first_part + last_part) / 2
-            projection_of_first_part = projection_of_last_part * (first_part/two_norm_of_first_part)
+            projection_of_first_part = projection_of_last_part * (first_part / two_norm_of_first_part)
             projection = np.concatenate((projection_of_first_part,
                                          projection_of_last_part)).reshape(self.__shape)
             return projection

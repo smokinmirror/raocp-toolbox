@@ -71,6 +71,9 @@ class Cache:
     def get_kernel_constraint_matrices(self):
         return self.__kernel_constraint_matrix.copy()
 
+    def get_nullspace_matrices(self):
+        return self.__null_space_matrix.copy()
+
     # SETTERS ##########################################################################################################
 
     def cache_initial_state(self, state):

@@ -33,7 +33,7 @@ class TestCones(unittest.TestCase):
         real = TestCones.__real
 
         # create point for projection
-        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+        vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
             .reshape((TestCones.__cone_dimension, 1))
 
         # create points for test
@@ -56,7 +56,7 @@ class TestCones(unittest.TestCase):
         real = TestCones.__real
 
         # create point for projection
-        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension)) \
+        vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension)) \
             .reshape((TestCones.__cone_dimension, 1))
 
         # create points for test
@@ -79,7 +79,7 @@ class TestCones(unittest.TestCase):
         zero = TestCones.__zero
 
         # create points for projection
-        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+        vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
             .reshape((TestCones.__cone_dimension, 1))
         samples = [None] * TestCones.__num_samples
         for i in range(TestCones.__num_samples):
@@ -100,7 +100,7 @@ class TestCones(unittest.TestCase):
         zero = TestCones.__zero
 
         # create points for projection
-        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+        vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
             .reshape((TestCones.__cone_dimension, 1))
         dual_samples = [None] * TestCones.__num_samples
         for i in range(TestCones.__num_samples):
@@ -121,7 +121,7 @@ class TestCones(unittest.TestCase):
         nonnegative_orthant = TestCones.__nonnegative_orthant
 
         # create points for projection
-        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+        vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
             .reshape((TestCones.__cone_dimension, 1))
         samples = [None] * TestCones.__num_samples
         for i in range(TestCones.__num_samples):
@@ -142,7 +142,7 @@ class TestCones(unittest.TestCase):
         nonnegative_orthant = TestCones.__nonnegative_orthant
 
         # create points for projection
-        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+        vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
             .reshape((TestCones.__cone_dimension, 1))
         dual_samples = [None] * TestCones.__num_samples
         for i in range(TestCones.__num_samples):
@@ -165,11 +165,11 @@ class TestCones(unittest.TestCase):
         # repeat only required here because soc cone calculation is not straightforward (and cone is self dual)
         for _ in range(TestCones.__num_test_repeats):
             # create points for projection
-            vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
                 .reshape((TestCones.__cone_dimension, 1))
             samples = [None] * TestCones.__num_samples
             for i in range(TestCones.__num_samples):
-                s = np.random.randint(-100, 100, TestCones.__cone_dimension - 1)
+                s = np.random.randn(TestCones.__cone_dimension - 1)
                 t = np.linalg.norm(s)
                 samples[i] = (np.hstack((s, t)))  # soc samples
 
@@ -188,7 +188,7 @@ class TestCones(unittest.TestCase):
         second_order_cone = TestCones.__second_order_cone
 
         # create points for projection
-        vector = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+        vector = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
             .reshape((TestCones.__cone_dimension, 1))
         dual_samples = [None] * TestCones.__num_samples
         for i in range(TestCones.__num_samples):
@@ -217,7 +217,7 @@ class TestCones(unittest.TestCase):
         samples = []
         for i in range(num_cones):
             samples.append([None] * TestCones.__num_samples)
-            vector[i] = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            vector[i] = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
                 .reshape((TestCones.__cone_dimension, 1))
 
         # create set samples
@@ -252,7 +252,7 @@ class TestCones(unittest.TestCase):
         dual_samples = []
         for i in range(num_cones):
             dual_samples.append([None] * TestCones.__num_samples)
-            vector[i] = np.array(TestCones.__sample_multiplier * np.random.rand(TestCones.__cone_dimension))\
+            vector[i] = np.array(TestCones.__sample_multiplier * np.random.randn(TestCones.__cone_dimension))\
                 .reshape((TestCones.__cone_dimension, 1))
 
         # create set samples

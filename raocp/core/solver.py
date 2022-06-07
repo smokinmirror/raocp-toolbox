@@ -21,6 +21,7 @@ class Solver:
         self.__parameter_1 = None
         self.__parameter_2 = None
         self.__error = [np.zeros(1)] * 3
+        self.__delta_error = [np.zeros(1)] * 3
 
     def primal_k_plus_half(self):
         # get memory space for ell_transpose_dual
@@ -62,9 +63,6 @@ class Solver:
         # in this function, p = primal and d = dual
         p_new, p = self.__cache.get_primal()
         d_new, d = self.__cache.get_dual()
-        xi_0 = p.copy()
-        xi_1 = p.copy()
-        xi_2 = d.copy()
 
         # error 1
         p_minus_p_new = [a_i - b_i for a_i, b_i in zip(p, p_new)]
@@ -86,7 +84,14 @@ class Solver:
         self.__operator.ell_transpose(xi_2, ell_transpose_error2)
         xi_0 = [a_i + b_i for a_i, b_i in zip(xi_1, ell_transpose_error2)]
 
-        return xi_0, xi_1, xi_2
+        # delta errors
+        delta_1 = p_new_minus_p
+        delta_2 = [a_i - b_i for a_i, b_i in zip(d_new, d)]
+        _, ell_transpose_delta_2 = self.__cache.get_primal()
+        self.__operator.ell_transpose(delta_2, ell_transpose_delta_2)
+        delta_0 = [a_i - b_i for a_i, b_i in zip(delta_1, ell_transpose_delta_2)]
+
+        return xi_0, xi_1, xi_2, delta_0, delta_1, delta_2
 
     def chock(self, initial_state, max_iters=10, tol=1e-5):
         """
@@ -125,11 +130,14 @@ class Solver:
             self.dual_k_plus_one()
 
             # calculate error
-            xi_0, xi_1, xi_2 = self._calculate_chock_errors()
+            xi_0, xi_1, xi_2, delta_0, delta_1, delta_2 = self._calculate_chock_errors()
             xi = [xi_0, xi_1, xi_2]
+            delta = [delta_0, delta_1, delta_2]
             for i in range(3):
-                inf_norm = [np.linalg.norm(a_i, ord=np.inf) for a_i in xi[i]]
-                self.__error[i] = np.linalg.norm(inf_norm, np.inf)
+                inf_norm_xi = [np.linalg.norm(a_i, ord=np.inf) for a_i in xi[i]]
+                inf_norm_delta = [np.linalg.norm(a_i, ord=np.inf) for a_i in delta[i]]
+                self.__error[i] = np.linalg.norm(inf_norm_xi, np.inf)
+                self.__delta_error[i] = np.linalg.norm(inf_norm_delta, np.inf)
 
             current_error = max(self.__error)
 
@@ -138,8 +146,10 @@ class Solver:
             # cache error
             if current_iteration == 0:
                 error_cache = np.array(self.__error)
+                delta_error_cache = np.array(self.__delta_error)
             else:
                 error_cache = np.vstack((error_cache, np.array(self.__error)))
+                delta_error_cache = np.vstack((delta_error_cache, np.array(self.__delta_error)))
 
             # check stopping criteria
             if current_iteration >= max_iters:
@@ -152,20 +162,23 @@ class Solver:
         tock = time.perf_counter()
         print(f"timer stopped in {tock - tick:0.4f} seconds")
 
-        primal, _ = self.__cache.get_primal()
-        seg_p = self.__cache.get_primal_segments()
-        x = primal[seg_p[1]: seg_p[2]]
-        u = primal[seg_p[2]: seg_p[3]]
-        print(f"x =\n"
-              f"{x}\n"
-              f"u =\n"
-              f"{u}\n")
+        # primal, _ = self.__cache.get_primal()
+        # seg_p = self.__cache.get_primal_segments()
+        # x = primal[seg_p[1]: seg_p[2]]
+        # u = primal[seg_p[2]: seg_p[3]]
+        # print(f"x =\n"
+        #       f"{x}\n"
+        #       f"u =\n"
+        #       f"{u}\n")
 
-        width = 3
+        width = 2
         plt.semilogy(error_cache[:, 0], linewidth=width, linestyle="solid")
-        plt.semilogy(error_cache[:, 1], linewidth=width, linestyle=(0, (5, 10)))
-        plt.semilogy(error_cache[:, 2], linewidth=width, linestyle="dashed")
+        plt.semilogy(error_cache[:, 1], linewidth=width, linestyle="solid")
+        plt.semilogy(error_cache[:, 2], linewidth=width, linestyle="solid")
+        plt.semilogy(delta_error_cache[:, 0], linewidth=width, linestyle="dashed")
+        plt.semilogy(delta_error_cache[:, 1], linewidth=width, linestyle="dashed")
+        plt.semilogy(delta_error_cache[:, 2], linewidth=width, linestyle="dashed")
         plt.ylabel(r"residual value", fontsize=12)
         plt.xlabel(r"iteration", fontsize=12)
-        plt.legend(("xi_0", "xi_1", "xi_2"))
+        plt.legend(("xi_0", "xi_1", "xi_2", "del_0", "del_1", "del_2"))
         plt.show()

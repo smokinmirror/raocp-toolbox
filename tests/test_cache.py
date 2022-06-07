@@ -23,7 +23,7 @@ class TestCache(unittest.TestCase):
                           [0.4, 0.6, 0],
                           [0, 0.3, 0.7]])
             v = np.array([0.5, 0.4, 0.1])
-            (N, tau) = (2, 1)
+            (N, tau) = (4, 3)
             TestCache.__tree_from_markov = core_tree.MarkovChainScenarioTreeFactory(p, v, N, tau).create()
 
     @staticmethod
@@ -162,7 +162,7 @@ class TestCache(unittest.TestCase):
         mock_cache, seg_p, _ = self._construct_mock_cache()
         _, prim = mock_cache.get_primal()  # template
         for i in range(seg_p[3], seg_p[6]):
-            if i == seg_p[3] or i == seg_p[5]:
+            if i == seg_p[4] or i == seg_p[5]:
                 pass
             else:
                 prim[i] = np.random.randn(prim[i].size).reshape(-1, 1)
@@ -171,8 +171,10 @@ class TestCache(unittest.TestCase):
         mock_cache.project_on_kernel()
         proj, _ = mock_cache.get_primal()
         constraint_matrix = mock_cache.get_kernel_constraint_matrices()
+        nullspace_matrix = mock_cache.get_nullspace_matrices()
         for i in range(self.__tree_from_markov.num_nonleaf_nodes):
             children = self.__tree_from_markov.children_of(i)
+
             t_stack = proj[seg_p[4] + children[0]]
             s_stack = proj[seg_p[5] + children[0]]
             if children.size > 1:
@@ -180,9 +182,31 @@ class TestCache(unittest.TestCase):
                     t_stack = np.vstack((t_stack, proj[seg_p[4] + j]))
                     s_stack = np.vstack((s_stack, proj[seg_p[5] + j]))
 
-            stack = np.vstack((proj[seg_p[3] + i], t_stack, s_stack))
-            inf_norm = np.linalg.norm(constraint_matrix[i] @ stack, np.inf)
+            proj_stack = np.vstack((proj[seg_p[3] + i], t_stack, s_stack))
+            kernel = constraint_matrix[i] @ proj_stack
+            inf_norm = np.linalg.norm(kernel, np.inf)
             self.assertTrue(np.allclose(inf_norm, 0))
+
+            # run in cvxpy
+            cp_t_stack = prim[seg_p[4] + children[0]]
+            cp_s_stack = prim[seg_p[5] + children[0]]
+            if children.size > 1:
+                for j in np.delete(children, 0):
+                    cp_t_stack = np.vstack((cp_t_stack, prim[seg_p[4] + j]))
+                    cp_s_stack = np.vstack((cp_s_stack, prim[seg_p[5] + j]))
+
+            cp_stack = np.vstack((prim[seg_p[3] + i], cp_t_stack, cp_s_stack)).reshape(-1,)
+            minimiser = cp.Variable(nullspace_matrix[i].shape[1])
+            cost = cp.sum_squares(nullspace_matrix[i] @ minimiser - cp_stack)
+            prob = cp.Problem(cp.Minimize(cost))
+            prob.solve()
+            cp_proj = nullspace_matrix[i] @ minimiser.value
+            cp_kernel = constraint_matrix[i] @ cp_proj
+            cp_inf_norm = np.linalg.norm(cp_kernel, np.inf)
+            self.assertTrue(np.allclose(cp_inf_norm, 0))
+
+            # check against each other
+            self.assertTrue(np.allclose(proj_stack.reshape(-1,), cp_proj))
 
     def test_modify_dual(self):
         mock_cache, _, seg_d = self._construct_mock_cache()
