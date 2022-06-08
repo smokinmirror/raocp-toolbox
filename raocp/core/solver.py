@@ -145,11 +145,11 @@ class Solver:
             self.__cache.update_cache()
             # cache error
             if current_iteration == 0:
-                error_cache = np.array(self.__error)
-                delta_error_cache = np.array(self.__delta_error)
+                self.__error_cache = np.array(self.__error)
+                self.__delta_error_cache = np.array(self.__delta_error)
             else:
-                error_cache = np.vstack((error_cache, np.array(self.__error)))
-                delta_error_cache = np.vstack((delta_error_cache, np.array(self.__delta_error)))
+                self.__error_cache = np.vstack((self.__error_cache, np.array(self.__error)))
+                self.__delta_error_cache = np.vstack((self.__delta_error_cache, np.array(self.__delta_error)))
 
             # check stopping criteria
             if current_iteration >= max_iters:
@@ -162,23 +162,89 @@ class Solver:
         tock = time.perf_counter()
         print(f"timer stopped in {tock - tick:0.4f} seconds")
 
-        # primal, _ = self.__cache.get_primal()
-        # seg_p = self.__cache.get_primal_segments()
-        # x = primal[seg_p[1]: seg_p[2]]
-        # u = primal[seg_p[2]: seg_p[3]]
-        # print(f"x =\n"
-        #       f"{x}\n"
-        #       f"u =\n"
-        #       f"{u}\n")
+        if current_iteration < max_iters:
+            return 0  # converged
+        elif current_iteration >= max_iters:
+            return 1  # not converged
+        else:
+            raise Exception("Iteration error in solver")
 
+    def print_states(self):
+        primal, _ = self.__cache.get_primal()
+        seg_p = self.__cache.get_primal_segments()
+        print(f"states =\n")
+        for i in range(seg_p[1], seg_p[2]):
+            print(f"{primal[i]}\n")
+
+    def print_inputs(self):
+        primal, _ = self.__cache.get_primal()
+        seg_p = self.__cache.get_primal_segments()
+        print(f"inputs =\n")
+        for i in range(seg_p[2], seg_p[3]):
+            print(f"{primal[i]}\n")
+
+    def plot_residuals(self):
         width = 2
-        plt.semilogy(error_cache[:, 0], linewidth=width, linestyle="solid")
-        plt.semilogy(error_cache[:, 1], linewidth=width, linestyle="solid")
-        plt.semilogy(error_cache[:, 2], linewidth=width, linestyle="solid")
-        plt.semilogy(delta_error_cache[:, 0], linewidth=width, linestyle="dashed")
-        plt.semilogy(delta_error_cache[:, 1], linewidth=width, linestyle="dashed")
-        plt.semilogy(delta_error_cache[:, 2], linewidth=width, linestyle="dashed")
+        plt.semilogy(self.__error_cache[:, 0], linewidth=width, linestyle="solid")
+        plt.semilogy(self.__error_cache[:, 1], linewidth=width, linestyle="solid")
+        plt.semilogy(self.__error_cache[:, 2], linewidth=width, linestyle="solid")
+        plt.semilogy(self.__delta_error_cache[:, 0], linewidth=width, linestyle="dashed")
+        plt.semilogy(self.__delta_error_cache[:, 1], linewidth=width, linestyle="dashed")
+        plt.semilogy(self.__delta_error_cache[:, 2], linewidth=width, linestyle="dashed")
         plt.ylabel(r"residual value", fontsize=12)
         plt.xlabel(r"iteration", fontsize=12)
-        plt.legend(("xi_0", "xi_1", "xi_2", "del_0", "del_1", "del_2"))
+        plt.legend(("xi_0", "xi_1", "xi_2", "delta_0", "delta_1", "delta_2"))
         plt.show()
+
+    def plot_solution(self):
+        primal, _ = self.__cache.get_primal()
+        seg_p = self.__cache.get_primal_segments()
+        x = primal[seg_p[1]: seg_p[2]]
+        u = primal[seg_p[2]: seg_p[3]]
+        state_size = np.size(x[0])
+        control_size = np.size(u[0])
+        raocp = self.__cache.get_raocp()
+        num_nonleaf = raocp.tree.num_nonleaf_nodes
+        num_nodes = raocp.tree.num_nodes
+        num_leaf = num_nodes - num_nonleaf
+        num_stages = raocp.tree.num_stages
+        fig, axs = plt.subplots(2, state_size, sharex="all", sharey="row")
+        fig.set_size_inches(15, 8)
+        fig.set_dpi(80)
+
+        for element in range(state_size):
+            for i in range(num_leaf):
+                j = raocp.tree.nodes_at_stage(num_stages-1)[i]
+                plotter = [[raocp.tree.stage_of(j), x[j][element][0]]]
+                while raocp.tree.ancestor_of(j) >= 0:
+                    anc_j = raocp.tree.ancestor_of(j)
+                    plotter.append([[raocp.tree.stage_of(anc_j), x[anc_j][element][0]]])
+                    j = anc_j
+
+                x_plot = np.array(np.vstack(plotter))
+                axs[0, element].plot(x_plot[:, 0], x_plot[:, 1])
+                axs[0, element].set_title(f"x_{element}")
+
+        for element in range(control_size):
+            for i in range(num_leaf):
+                j = raocp.tree.ancestor_of(raocp.tree.nodes_at_stage(num_stages-1)[i])
+                plotter = [[raocp.tree.stage_of(j), u[j][element][0]]]
+                while raocp.tree.ancestor_of(j) >= 0:
+                    anc_j = raocp.tree.ancestor_of(j)
+                    plotter.append([[raocp.tree.stage_of(anc_j), u[anc_j][element][0]]])
+                    j = anc_j
+
+                u_plot = np.array(np.vstack(plotter))
+                axs[1, element].plot(u_plot[:, 0], u_plot[:, 1])
+                axs[1, element].set_title(f"u_{element}")
+
+        for ax in axs.flat:
+            ax.set(xlabel='stage', ylabel='value')
+
+        # Hide x labels and tick labels for top plots and y ticks for right plots.
+        for ax in axs.flat:
+            ax.label_outer()
+
+        fig.tight_layout()
+        plt.show()
+
