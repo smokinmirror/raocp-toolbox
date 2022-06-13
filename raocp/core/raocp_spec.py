@@ -123,7 +123,7 @@ class RAOCP:
 
         # check that scenario tree is Markovian
         if self.__tree.is_markovian:
-            for i in range(1, self.__tree.num_nodes):
+            for i in range(1, self.__num_nodes):
                 self.__list_of_nonleaf_costs[i] = deepcopy(ordered_list_of_costs[self.__tree.value_at_node(i)])
 
             return self
@@ -134,7 +134,7 @@ class RAOCP:
         # check cost are nonleaf
         if not cost.node_type.is_nonleaf:
             raise Exception("Nonleaf cost provided is not nonleaf")
-        for i in range(1, self.__tree.num_nodes):
+        for i in range(1, self.__num_nodes):
             self.__list_of_nonleaf_costs[i] = deepcopy(cost)
 
         return self
@@ -143,31 +143,12 @@ class RAOCP:
         # check cost are leaf
         if not cost.node_type.is_leaf:
             raise Exception("Leaf cost provided is not leaf")
-        for i in range(self.__tree.num_nonleaf_nodes, self.__tree.num_nodes):
+        for i in range(self.__num_nonleaf_nodes, self.__num_nodes):
             self.__list_of_leaf_costs[i] = deepcopy(cost)
 
         return self
 
     # Constraints ------------------------------------------------------------------------------------------------------
-
-    # def with_markovian_nonleaf_constraints(self, ordered_list_of_constraints):
-    #     self._check_dynamics_before_constraints()
-    #     # check constraints are nonleaf
-    #     for con in ordered_list_of_constraints:
-    #         if not con.node_type.is_nonleaf:
-    #             raise Exception("Nonleaf constraints provided are not nonleaf")
-    #
-    #     # check that scenario tree is Markovian
-    #     if self.__tree.is_markovian:
-    #         for i in range(1, self.__tree.num_nodes):
-    #             constraint = deepcopy(ordered_list_of_constraints[self.__tree.value_at_node(i)])
-    #             constraint.state_size = self.__list_of_dynamics[-1].state_dynamics.shape[1]
-    #             constraint.control_size = self.__list_of_dynamics[-1].control_dynamics.shape[1]
-    #             self.__list_of_nonleaf_constraints[i] = constraint
-    #
-    #         return self
-    #     else:
-    #         raise TypeError("constraints provided as Markovian, scenario tree provided is not Markovian")
 
     def with_all_nonleaf_constraints(self, nonleaf_constraint):
         self._check_dynamics_before_constraints()

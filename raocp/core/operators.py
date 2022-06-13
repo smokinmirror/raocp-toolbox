@@ -1,6 +1,5 @@
 import numpy as np
 import raocp.core.cache as core_cache
-from scipy.sparse.linalg import LinearOperator
 
 
 class Operator:
