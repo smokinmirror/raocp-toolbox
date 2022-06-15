@@ -6,6 +6,7 @@ import raocp.core.operators as ops
 import raocp.core.raocp_spec as spec
 
 import matplotlib.pyplot as plt
+import tikzplotlib as tikz
 
 
 class Solver:
@@ -191,7 +192,8 @@ class Solver:
         plt.semilogy(self.__delta_error_cache[:, 0], linewidth=width, linestyle="dashed")
         plt.semilogy(self.__delta_error_cache[:, 1], linewidth=width, linestyle="dashed")
         plt.semilogy(self.__delta_error_cache[:, 2], linewidth=width, linestyle="dashed")
-        plt.ylabel(r"residual value", fontsize=12)
+        plt.title("Residual values of Chambolle-Pock algorithm iterations")
+        plt.ylabel(r"log(residual value)", fontsize=12)
         plt.xlabel(r"iteration", fontsize=12)
         plt.legend(("xi_0", "xi_1", "xi_2", "delta_0", "delta_1", "delta_2"))
         plt.show()
@@ -223,7 +225,7 @@ class Solver:
 
                 x_plot = np.array(np.vstack(plotter))
                 axs[0, element].plot(x_plot[:, 0], x_plot[:, 1])
-                axs[0, element].set_title(f"x_{element}")
+                axs[0, element].set_title(f"state element, x_{element}(t)")
 
         for element in range(control_size):
             for i in range(num_leaf):
@@ -236,15 +238,16 @@ class Solver:
 
                 u_plot = np.array(np.vstack(plotter))
                 axs[1, element].plot(u_plot[:, 0], u_plot[:, 1])
-                axs[1, element].set_title(f"u_{element}")
+                axs[1, element].set_title(f"control element, u_{element}(t)")
 
         for ax in axs.flat:
-            ax.set(xlabel='stage', ylabel='value')
+            ax.set(xlabel='stage, t', ylabel='value')
 
         # Hide x labels and tick labels for top plots and y ticks for right plots.
         for ax in axs.flat:
             ax.label_outer()
 
         fig.tight_layout()
+        tikz.save('python-solution.tex')
         plt.show()
 

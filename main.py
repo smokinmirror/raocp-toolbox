@@ -5,6 +5,7 @@ import raocp.core.dynamics as dynamics
 import raocp.core.costs as costs
 import raocp.core.risks as risks
 import raocp.core.constraints.rectangle as rectangle
+import tikzplotlib as tikz
 
 # ScenarioTree generation ----------------------------------------------------------------------------------------------
 
@@ -19,9 +20,8 @@ tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
                                              initial_distribution=v,
                                              num_stages=N, stopping_time=tau).create()
 
-# tree.bulls_eye_plot(dot_size=5, radius=300)
+# tree.bulls_eye_plot(dot_size=6, radius=300, filename='scenario-tree.eps')
 # print(sum(tree.probability_of_node(tree.nodes_at_stage(8))))
-
 # print(tree)
 
 # RAOCP generation -----------------------------------------------------------------------------------------------------
@@ -34,19 +34,19 @@ factor = 0.1
 # for i in range(num_states - 1):
 #     Aw = np.vstack((Aw, factor * np.random.randn(num_states)))
 #     Bw = np.vstack((Bw, factor * np.random.randn(num_inputs)))
-Aw = factor * np.array([[1, 2, 3], [3, 1, 2], [2, 3, 1]])
-Bw = factor * np.array([[3, 0], [1, 0], [0, 2]])
-As = [1.5 * Aw, Aw, -1.5 * Aw]  # n x n matrices
-Bs = [-1.5 * Bw, Bw, 1.5 * Bw]  # n x u matrices
+Aw = factor * np.array([[1, 2, 1], [1, 1, 2], [2, 1, 1]])
+Bw = factor * np.array([[1, 0], [1, 0], [0, 2]])
+As = [0.5 * Aw, Aw, -0.5 * Aw]  # n x n matrices
+Bs = [-0.5 * Bw, Bw, 0.5 * Bw]  # n x u matrices
 mark_dynamics = [dynamics.Dynamics(As[0], Bs[0]),
                  dynamics.Dynamics(As[1], Bs[1]),
                  dynamics.Dynamics(As[2], Bs[2])]
 
 Q = factor * np.eye(num_states)  # n x n matrix
-Qs = [2 * Q, 2 * Q, 2 * Q]
+Qs = [.2 * Q, .2 * Q, .2 * Q]
 R = factor * np.eye(num_inputs)  # u x u matrix OR scalar
-Rs = [2 * R, 2 * R, 2 * R]
-Pf = factor * 2 * np.eye(num_states)  # n x n matrix
+Rs = [.2 * R, .2 * R, .2 * R]
+Pf = factor * .1 * np.eye(num_states)  # n x n matrix
 mark_nl_costs = [costs.Quadratic(nl, Qs[0], Rs[0]),
                  costs.Quadratic(nl, Qs[1], Rs[1]),
                  costs.Quadratic(nl, Qs[2], Rs[2])]
@@ -54,8 +54,8 @@ leaf_cost = costs.Quadratic(l, Pf)
 
 nonleaf_size = num_states + num_inputs
 leaf_size = num_states
-x_lim = 6
-u_lim = 0.2
+x_lim = 7
+u_lim = .1
 nl_min = np.vstack((-x_lim * np.ones((num_states, 1)),
                     -u_lim * np.ones((num_inputs, 1))))
 nl_max = np.vstack((x_lim * np.ones((num_states, 1)),
@@ -78,13 +78,13 @@ problem = r.core.RAOCP(scenario_tree=tree) \
 
 solver = r.core.Solver(problem_spec=problem)
 initial_state = np.array([[5], [-6], [-1]])  # np.random.randn(num_states).reshape(-1, 1)
-status = solver.chock(initial_state=initial_state, max_iters=3000, tol=1e-3)
+status = solver.chock(initial_state=initial_state, max_iters=2000, tol=1e-3)
 if status == 0:
     print("success")
 else:
     print("fail")
 
-# solver.plot_residuals()
-# solver.print_states()
-# solver.print_inputs()
-solver.plot_solution()
+solver.plot_residuals()
+solver.print_states()
+solver.print_inputs()
+# solver.plot_solution()
