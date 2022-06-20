@@ -189,13 +189,14 @@ class Solver:
         plt.semilogy(self.__error_cache[:, 0], linewidth=width, linestyle="solid")
         plt.semilogy(self.__error_cache[:, 1], linewidth=width, linestyle="solid")
         plt.semilogy(self.__error_cache[:, 2], linewidth=width, linestyle="solid")
-        plt.semilogy(self.__delta_error_cache[:, 0], linewidth=width, linestyle="dashed")
-        plt.semilogy(self.__delta_error_cache[:, 1], linewidth=width, linestyle="dashed")
-        plt.semilogy(self.__delta_error_cache[:, 2], linewidth=width, linestyle="dashed")
+        # plt.semilogy(self.__delta_error_cache[:, 0], linewidth=width, linestyle="dashed")
+        # plt.semilogy(self.__delta_error_cache[:, 1], linewidth=width, linestyle="dashed")
+        # plt.semilogy(self.__delta_error_cache[:, 2], linewidth=width, linestyle="dashed")
         plt.title("Residual values of Chambolle-Pock algorithm iterations")
         plt.ylabel(r"log(residual value)", fontsize=12)
         plt.xlabel(r"iteration", fontsize=12)
-        plt.legend(("xi_0", "xi_1", "xi_2", "delta_0", "delta_1", "delta_2"))
+        plt.legend(("xi_0", "xi_1", "xi_2"))  # , "delta_0", "delta_1", "delta_2"))
+        tikz.save('4-3-residuals.tex')
         plt.show()
 
     def plot_solution(self):
