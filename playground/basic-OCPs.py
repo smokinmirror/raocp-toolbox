@@ -162,7 +162,8 @@ def main_admm():
         rho = min(20, rho)  # limit increase of rho
     return x_cache_four, e_cache_four, z_cache_four, u_cache_four, rho
 
-
+# ----
+# Chambolle-Pock method
 def main_chambolle_pock():
     # Problem five with Chambolle-Pock algorithm
     alpha = 5  # scaling term - must be 0 < a < 1
