@@ -31,10 +31,9 @@ def f_and_gf_quad(x_):
 
 ########################################################################################################################
 def get_h_0_k():
-    tol = 1e-16
     s = s_cache[-1]
     y = y_cache[-1]
-    if y.T@y <= tol:
+    if y.T@y <= 1e-16:
         raise Exception("attempted division by zero for H^0_k")
     gamma = s.T@y / y.T@y
     h = gamma * np.eye(n)
@@ -63,7 +62,7 @@ def get_p_k(k):
     return -r
 
 
-def get_alpha_k(p):
+def get_alpha_k(p, k):
     # Nocedal and Wright, Numerical Optimization, Eq.(3.6)
     c_1 = 1e-4
     c_2 = 0.9
@@ -83,7 +82,7 @@ def get_alpha_k(p):
             alpha *= 0.5
             counter += 1
         if counter > 50:
-            raise Exception(f"alpha search exceeded 50 iterations, alpha = {alpha}")
+            raise Exception(f"alpha search exceeded 50 iterations, alpha = {alpha}, k = {k}")
 
     return alpha
 
@@ -91,7 +90,10 @@ def get_alpha_k(p):
 def get_x_plus_1(k):
     x_k = x_cache[-1]
     p_k = get_p_k(k)
-    alpha_k = get_alpha_k(p_k)
+    alpha_k = get_alpha_k(p_k, k)
+    if k >= m:
+        s_cache[k-m] = None
+        y_cache[k - m] = None
     return x_k + alpha_k*p_k
 
 
@@ -109,9 +111,10 @@ def cache_x_s_y(x_new):
 # ----
 # L-BFGS method
 def main_ell_bfgs():
-    # quad problem with L-BFGS method
+    # quad problem with L-BFGS method#
+    k = 0
     _, grad_dir = problem(x_0)
-    alpha = get_alpha_k(-grad_dir)
+    alpha = get_alpha_k(-grad_dir, k)
     x_plus = x_0 - alpha*grad_dir
     cache_x_s_y(x_plus)
     k = 1
@@ -123,7 +126,7 @@ def main_ell_bfgs():
         cache_x_s_y(x_new)
         _, grad = problem(x_new)
         max_grad = np.linalg.norm(grad, np.inf)
-        keep_running = max_grad > tol or k > 100
+        keep_running = max_grad > tol and k < 100
         grad_cache.append(max_grad)
         if keep_running:
             k += 1
@@ -133,14 +136,17 @@ def main_ell_bfgs():
 
 # ----
 # Specification
-tol = 1e-1
+tol = 1e-3
 n = 1000
-m = 20
+m = 5
 problem = f_and_gf_quad
-C = np.random.randn(n, n)
+C = 0.1 * np.random.randn(n, n)
 Q = np.eye(n) + C.T@C
 q = np.random.randn(n).reshape(-1, 1)
 x_0 = np.random.randn(n).reshape(-1, 1)
+print(f"Q = \n{Q}")
+# print(f"q = \n{q}")
+# print(f"x_0 = \n{x_0}")
 
 # ----
 # Cache
@@ -158,8 +164,8 @@ cp_prob.solve()
 # ----
 # Run
 solution, cache_grad = main_ell_bfgs()
-if not np.allclose(solution.T, x.value, atol=1e-1):
+if not np.allclose(solution.T, x.value, atol=tol):
     raise Exception("solutions not close")
 
-plt.plot(cache_grad)
+plt.semilogy(cache_grad)
 plt.show()
