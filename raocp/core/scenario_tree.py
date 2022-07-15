@@ -25,7 +25,6 @@ class ScenarioTree:
 
     def __init__(self, stages, ancestors, probability, w_values=None, is_markovian=False):
         """
-        :param tree_factory: tree factory used to create tree
         :param stages: integer number of total tree stages (N+1)
         :param ancestors: array where `array position=node number` and `value at position=node ancestor`
         :param probability: array where `array position=node number` and `value at position=probability node occurs`
@@ -75,7 +74,7 @@ class ScenarioTree:
 
     @property
     def num_nonleaf_nodes(self):
-        return np.sum(self.__stages < self.num_stages)
+        return np.sum(self.__stages < (self.num_stages - 1))
 
     @property
     def num_nodes(self):
@@ -87,9 +86,9 @@ class ScenarioTree:
     @property
     def num_stages(self):
         """
-        :return: number of stages
+        :return: number of stages including zero stage
         """
-        return self.__stages[-1]
+        return self.__stages[-1] + 1
 
     def ancestor_of(self, node_idx):
         """
@@ -156,12 +155,12 @@ class ScenarioTree:
 
     def __str__(self):
         return f"Scenario Tree\n+ Nodes: {self.num_nodes}\n+ Stages: {self.num_stages}\n" \
-               f"+ Scenarios: {len(self.nodes_at_stage(self.num_stages()))}\n" \
+               f"+ Scenarios: {len(self.nodes_at_stage(self.num_stages - 1))}\n" \
                f"+ Data: {self.__data is not None}"
 
     def __repr__(self):
         return f"Scenario tree with {self.num_nodes} nodes, {self.num_stages} stages " \
-               f"and {len(self.nodes_at_stage(self.num_stages))} scenarios"
+               f"and {len(self.nodes_at_stage(self.num_stages - 1))} scenarios"
 
     @staticmethod
     def __circle_coord(rad, arc):
@@ -184,16 +183,17 @@ class ScenarioTree:
     def __draw_leaf_nodes_on_circle(self, trt, radius, dot_size=6):
         trt.pencolor('gray')
         ScenarioTree.__draw_circle(trt, radius)
-        leaf_nodes = self.nodes_at_stage(self.num_stages())
-        num_nds = len(leaf_nodes)
-        dv = 360 / num_nds
-        arcs = np.zeros(self.num_nodes())
-        for i in range(num_nds):
+        leaf_nodes = self.nodes_at_stage(self.num_stages - 1)
+        num_leaf_nodes = len(leaf_nodes)
+        dv = 360 / num_leaf_nodes
+        arcs = np.zeros(self.num_nodes)
+        for i in range(num_leaf_nodes):
             ScenarioTree.__goto_circle_coord(trt, radius, i * dv)
             trt.pencolor('black')
             trt.dot(dot_size)
             trt.pencolor('gray')
             arcs[leaf_nodes[i]] = i * dv
+
         trt.pencolor('black')
         return arcs
 
@@ -228,8 +228,8 @@ class ScenarioTree:
         t.speed(0)
 
         arcs = self.__draw_leaf_nodes_on_circle(t, radius, dot_size)
-        radius_step = radius / self.num_stages()
-        for n in range(self.num_stages() - 1, -1, -1):
+        radius_step = radius / (self.num_stages - 1)
+        for n in range(self.num_stages - 2, -1, -1):
             radius -= radius_step
             arcs = self.__draw_nonleaf_nodes_on_circle(t, radius, radius + radius_step, n, arcs, dot_size)
 
@@ -299,6 +299,7 @@ class MarkovChainScenarioTreeFactory:
                 ancestors = np.concatenate((ancestors, node_id * ones))
                 nodes_added_at_stage += length_cover
                 values = np.concatenate((values, cover))
+
             num_nodes_at_stage = nodes_added_at_stage
             cursor = cursor_new
             ones = np.ones(nodes_added_at_stage, dtype=int)
@@ -307,7 +308,7 @@ class MarkovChainScenarioTreeFactory:
         for stage_idx in range(self.__stopping_time, self.__num_stages):
             ancestors = np.concatenate((ancestors, range(cursor, cursor + num_nodes_at_stage)))
             cursor += num_nodes_at_stage
-            ones = np.ones((nodes_added_at_stage,), dtype=int)
+            ones = np.ones((num_nodes_at_stage,), dtype=int)
             stages = np.concatenate((stages, (1 + stage_idx) * ones))
             values = np.concatenate((values, values[-num_nodes_at_stage::]))
 
@@ -323,15 +324,20 @@ class MarkovChainScenarioTreeFactory:
         probs[0] = 1
         probs[1:] = self.__initial_distribution[np.flatnonzero(self.__initial_distribution)]
         num_nodes = len(values)
+        index = 0
         for i in range(num_nonzero_init_distr + 1, num_nodes):
             if stages[i] == self.__stopping_time + 1:
+                index = i
                 break
             probs_new = probs[ancestors[i]] * \
-                        self.__transition_prob[values[ancestors[i]], values[i]]
+                self.__transition_prob[values[ancestors[i]], values[i]]
             probs = np.concatenate((probs, [probs_new]))
-        for j in range(i, num_nodes):
+            index = i
+
+        for j in range(index, num_nodes):
             probs_new = probs[ancestors[j]]
             probs = np.concatenate((probs, [probs_new]))
+
         return probs
 
     def create(self):

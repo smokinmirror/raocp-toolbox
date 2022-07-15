@@ -112,6 +112,8 @@ class SecondOrderCone:
 
     def project(self, vector):
         self.__dimension = _check_dimension(type(self), self.__dimension, vector)
+        if self.__dimension < 3:
+            raise Exception("Attempt to project a vector of size < 3 onto second order cone")
         self.__shape = vector.shape
         last_part = vector[-1].reshape(1, 1)
         first_part = vector[0:-1]
@@ -124,7 +126,7 @@ class SecondOrderCone:
             return projection
         else:
             projection_of_last_part = (two_norm_of_first_part + last_part) / 2
-            projection_of_first_part = projection_of_last_part * (first_part/two_norm_of_first_part)
+            projection_of_first_part = projection_of_last_part * (first_part / two_norm_of_first_part)
             projection = np.concatenate((projection_of_first_part,
                                          projection_of_last_part)).reshape(self.__shape)
             return projection
@@ -160,26 +162,48 @@ class Cartesian:
         self.__dimensions = [None] * self.__num_cones
 
     def project(self, list_of_vectors):
+        auto_list = self._check_list_of_vectors(list_of_vectors)
         projection = []
         for i in range(self.__num_cones):
             self.__dimensions[i] = _check_dimension(type(self.__cones[i]),
                                                     self.__cones[i].dimension,
-                                                    list_of_vectors[i])
-            projection.append(self.__cones[i].project(list_of_vectors[i]))
+                                                    auto_list[i])
+            projection.append(self.__cones[i].project(auto_list[i]))
 
         self.__dimension = sum(self.__dimensions)
-        return projection
+        if len(list_of_vectors) == 1:
+            return np.vstack(projection)
+        else:
+            return projection
 
     def project_onto_dual(self, list_of_vectors):
+        auto_list = self._check_list_of_vectors(list_of_vectors)
         projection = []
         for i in range(self.__num_cones):
             self.__dimensions[i] = _check_dimension(type(self.__cones[i]),
                                                     self.__cones[i].dimension,
-                                                    list_of_vectors[i])
-            projection.append(self.__cones[i].project_onto_dual(list_of_vectors[i]))
+                                                    auto_list[i])
+            projection.append(self.__cones[i].project_onto_dual(auto_list[i]))
 
         self.__dimension = sum(self.__dimensions)
-        return projection
+        if len(list_of_vectors) == 1:
+            return np.vstack(projection)
+        else:
+            return projection
+
+    def _check_list_of_vectors(self, list_of_vectors):
+        #  if list only has one vector, split into known cone dimensions
+        #  else, keep the same
+        auto_list = [None] * self.__num_cones
+        j = 0
+        if len(list_of_vectors) == 1:
+            for i in range(self.__num_cones):
+                auto_list[i] = list_of_vectors[0][j: j + self.__cones[i].dimension]
+                j += self.__cones[i].dimension
+
+            return auto_list
+        else:
+            return list_of_vectors
 
     # GETTERS
     @property
