@@ -5,7 +5,6 @@ import raocp.core.dynamics as dynamics
 import raocp.core.costs as costs
 import raocp.core.risks as risks
 import raocp.core.constraints.rectangle as rectangle
-import tikzplotlib as tikz
 
 # ScenarioTree generation ----------------------------------------------------------------------------------------------
 
@@ -85,6 +84,6 @@ else:
     print("fail")
 
 solver.plot_residuals()
-solver.print_states()
-solver.print_inputs()
+# solver.print_states()
+# solver.print_inputs()
 # solver.plot_solution()
