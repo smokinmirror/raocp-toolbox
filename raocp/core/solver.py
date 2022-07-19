@@ -4,6 +4,7 @@ import time
 import raocp.core.cache as cache
 import raocp.core.operators as ops
 import raocp.core.raocp_spec as spec
+import raocp.core.supermann as sm
 
 import matplotlib.pyplot as plt
 import tikzplotlib as tikz
@@ -14,8 +15,9 @@ class Solver:
     Solver for RAOCPs using proximal algorithms
     """
 
-    def __init__(self, problem_spec: spec.RAOCP):
+    def __init__(self, problem_spec: spec.RAOCP, supermann: sm.SuperMann = None):
         self.__raocp = problem_spec
+        self.__supermann = supermann
         self.__cache = cache.Cache(self.__raocp)
         self.__operator = ops.Operator(self.__cache)
         self.__initial_state = None
@@ -129,6 +131,14 @@ class Solver:
             # run dual part of algorithm
             self.dual_k_plus_half()
             self.dual_k_plus_one()
+
+            # accelerate with SuperMann
+            sm_prim = self.__cache.get_primal()
+            sm_dual = self.__cache.get_dual()
+            sm_x = np.vstack((sm_prim, sm_dual))
+            sm_x_new = self.__supermann.accelerate(sm_x)
+            self.__cache.set_primal(sm_x_new[:sm_prim.size])
+            self.__cache.set_dual(sm_x_new[sm_prim.size:])
 
             # calculate error
             xi_0, xi_1, xi_2, delta_0, delta_1, delta_2 = self._calculate_chock_errors()
