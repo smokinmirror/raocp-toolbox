@@ -15,16 +15,20 @@ class Solver:
     Solver for RAOCPs using proximal algorithms
     """
 
-    def __init__(self, problem_spec: spec.RAOCP, supermann: sm.SuperMann = None):
+    def __init__(self, problem_spec: spec.RAOCP, tol=1e-5, max_iters=10):
         self.__raocp = problem_spec
-        self.__supermann = supermann
         self.__cache = cache.Cache(self.__raocp)
         self.__operator = ops.Operator(self.__cache)
         self.__initial_state = None
         self.__parameter_1 = None
         self.__parameter_2 = None
+        self.__max_iters = max_iters
+        self.__tol = tol
         self.__error = [np.zeros(1)] * 3
         self.__delta_error = [np.zeros(1)] * 3
+        self.__error_cache = None
+        self.__delta_error_cache = None
+        self.__supermann = None
 
     def primal_k_plus_half(self):
         # get memory space for ell_transpose_dual
@@ -62,7 +66,7 @@ class Solver:
     def dual_k_plus_one(self):
         self.__cache.proximal_of_g_conjugate(self.__parameter_2)
 
-    def _calculate_chock_errors(self):
+    def calculate_chock_errors(self):
         # in this function, p = primal and d = dual
         p_new, p = self.__cache.get_primal()
         d_new, d = self.__cache.get_dual()
@@ -96,13 +100,20 @@ class Solver:
 
         return xi_0, xi_1, xi_2, delta_0, delta_1, delta_2
 
-    def chock(self, initial_state, max_iters=10, tol=1e-5):
-        """
-        Chambolle-Pock algorithm
-        """
-        self.__initial_state = initial_state
-        self.__cache.cache_initial_state(self.__initial_state)
+    def get_current_error(self):
+        # calculate error
+        xi_0, xi_1, xi_2, delta_0, delta_1, delta_2 = self.calculate_chock_errors()
+        xi = [xi_0, xi_1, xi_2]
+        delta = [delta_0, delta_1, delta_2]
+        for i in range(3):
+            inf_norm_xi = [np.linalg.norm(a_i, ord=np.inf) for a_i in xi[i]]
+            inf_norm_delta = [np.linalg.norm(a_i, ord=np.inf) for a_i in delta[i]]
+            self.__error[i] = np.linalg.norm(inf_norm_xi, np.inf)
+            self.__delta_error[i] = np.linalg.norm(inf_norm_delta, np.inf)
 
+        return max(self.__error)
+
+    def get_alphas(self):
         # find alpha_1 and _2
         _, prim = self.__cache.get_primal()
         _, dual = self.__cache.get_dual()
@@ -119,6 +130,31 @@ class Solver:
         self.__parameter_1 = one_over_norm
         self.__parameter_2 = one_over_norm
 
+    def check_termination_criteria(self, current_error_, current_iteration_, keep_running_):
+        # check stopping criteria
+        if current_iteration_ >= self.__max_iters:
+            keep_running_ = False
+        if current_error_ <= self.__tol:
+            keep_running_ = False
+        if keep_running_ is True:
+            current_iteration_ += 1
+        return current_iteration_, keep_running_
+
+    def check_convergence(self, current_iter_):
+        if current_iter_ < self.__max_iters:
+            return 0  # converged
+        elif current_iter_ >= self.__max_iters:
+            return 1  # not converged
+        else:
+            raise Exception("Iteration error in solver")
+
+    def chock(self, initial_state):
+        """
+        Chambolle-Pock algorithm, plain and simple
+        """
+        self.__initial_state = initial_state
+        self.__cache.cache_initial_state(self.__initial_state)
+        self.get_alphas()
         current_iteration = 0
         print("timer started")
         tick = time.perf_counter()
@@ -127,30 +163,12 @@ class Solver:
             # run primal part of algorithm
             self.primal_k_plus_half()
             self.primal_k_plus_one()
-
             # run dual part of algorithm
             self.dual_k_plus_half()
             self.dual_k_plus_one()
 
-            # accelerate with SuperMann
-            sm_prim = self.__cache.get_primal()
-            sm_dual = self.__cache.get_dual()
-            sm_x = np.vstack((sm_prim, sm_dual))
-            sm_x_new = self.__supermann.accelerate(sm_x)
-            self.__cache.set_primal(sm_x_new[:sm_prim.size])
-            self.__cache.set_dual(sm_x_new[sm_prim.size:])
-
-            # calculate error
-            xi_0, xi_1, xi_2, delta_0, delta_1, delta_2 = self._calculate_chock_errors()
-            xi = [xi_0, xi_1, xi_2]
-            delta = [delta_0, delta_1, delta_2]
-            for i in range(3):
-                inf_norm_xi = [np.linalg.norm(a_i, ord=np.inf) for a_i in xi[i]]
-                inf_norm_delta = [np.linalg.norm(a_i, ord=np.inf) for a_i in delta[i]]
-                self.__error[i] = np.linalg.norm(inf_norm_xi, np.inf)
-                self.__delta_error[i] = np.linalg.norm(inf_norm_delta, np.inf)
-
-            current_error = max(self.__error)
+            # calculate current error
+            current_error = self.get_current_error()
 
             # cache variables
             self.__cache.update_cache()
@@ -163,23 +181,87 @@ class Solver:
                 self.__delta_error_cache = np.vstack((self.__delta_error_cache, np.array(self.__delta_error)))
 
             # check stopping criteria
-            if current_iteration >= max_iters:
-                keep_running = False
-            if current_error <= tol:
-                keep_running = False
-            if keep_running is True:
-                current_iteration += 1
+            current_iteration, keep_running = self.check_termination_criteria(current_error,
+                                                                              current_iteration,
+                                                                              keep_running)
 
         tock = time.perf_counter()
         print(f"timer stopped in {tock - tick:0.4f} seconds")
+        return self.check_convergence(current_iteration)
 
-        if current_iteration < max_iters:
-            return 0  # converged
-        elif current_iteration >= max_iters:
-            return 1  # not converged
-        else:
-            raise Exception("Iteration error in solver")
+    def super_chock(self, initial_state, c0=0.99, c1=0.99, c2=0.99, beta=0.5, sigma=0.1, lamda=1.95):
+        """
+        Chambolle-Pock algorithm accelerated by SuperMann
+        """
+        # self.__supermann = sm.SuperMann(self.__cache, c0, c1, c2, beta, sigma, lamda)
+        self.__initial_state = initial_state
+        self.__cache.cache_initial_state(self.__initial_state)
+        self.get_alphas()
+        current_iteration = 0
+        counter_sm = 0
+        pos_k = 0
+        pos_kplus1 = 1
+        print("timer started")
+        tick = time.perf_counter()
+        keep_running = True
+        repeat = True
+        while keep_running:
+            eta = [None] * 2
+            w = [None] * 2
+            r_safe = None
+            while repeat:
+                vector_x_k = self.parts_to_vector(self.__cache.get_primal(), self.__cache.get_dual())
+                self.chock_operator()
+                vector_x_kplus1 = self.parts_to_vector(self.__cache.get_primal(), self.__cache.get_dual())
+                current_error = self.get_current_error()
+                self.__cache.update_cache()
+                if counter_sm == 0:
+                    self.__error_cache = np.array(self.__error)
+                else:
+                    self.__error_cache = np.vstack((self.__error_cache, np.array(self.__error)))
+                counter_sm, repeat = self.check_termination_criteria(current_error,
+                                                                     counter_sm,
+                                                                     repeat)
 
+            # check stopping criteria
+            current_iteration, keep_running = self.check_termination_criteria(current_error,
+                                                                              current_iteration,
+                                                                              keep_running)
+
+        tock = time.perf_counter()
+        print(f"timer stopped in {tock - tick:0.4f} seconds")
+        print(self.__error_cache[0])
+        return self.check_convergence(current_iteration), current_iteration, counter_sm
+
+    def chock_operator(self):
+        # run primal part of algorithm
+        self.primal_k_plus_half()
+        self.primal_k_plus_one()
+        # run dual part of algorithm
+        self.dual_k_plus_half()
+        self.dual_k_plus_one()
+
+    @staticmethod
+    def parts_to_vector(prim_, dual_):
+        return np.vstack((np.vstack(prim_), np.vstack(dual_)))
+
+    def vector_to_parts(self, vector_):
+        prim_ = self.__cache.get_primal()
+        dual_ = self.__cache.get_dual()
+        index = 0
+        for i in range(len(prim_)):
+            size_ = prim_[i].size
+            prim_[i] = vector_[index: size_]
+            index += size_
+
+        for i in range(len(dual_)):
+            size_ = dual_[i].size
+            dual_[i] = vector_[index: size_]
+            index += size_
+
+        return prim_, dual_
+
+    # print ###################################################
     def print_states(self):
         primal, _ = self.__cache.get_primal()
         seg_p = self.__cache.get_primal_segments()

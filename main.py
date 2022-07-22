@@ -75,14 +75,26 @@ problem = r.core.RAOCP(scenario_tree=tree) \
     .with_all_nonleaf_constraints(nl_rect) \
     .with_all_leaf_constraints(l_rect)
 
-solver = r.core.Solver(problem_spec=problem)
+solver = r.core.Solver(problem_spec=problem, max_iters=2000, tol=1e-3)
 initial_state = np.array([[5], [-6], [-1]])  # np.random.randn(num_states).reshape(-1, 1)
-status = solver.chock(initial_state=initial_state, max_iters=2000, tol=1e-3)
-if status == 0:
-    print("success")
-else:
-    print("fail")
 
+# simple chock
+# simple_chock_status = solver.chock(initial_state=initial_state)
+# if simple_chock_status == 0:
+#     print("simple chock success")
+# else:
+#     print("simple chock fail")
+# solver.plot_residuals()
+# # solver.print_states()
+# # solver.print_inputs()
+# # solver.plot_solution()
+
+# super chock
+super_chock_status, outer_iters, inner_iters = solver.super_chock(initial_state=initial_state)
+if super_chock_status == 0:
+    print(f"super chock success: outer = {outer_iters}, inner = {inner_iters}")
+else:
+    print(f"super chock fail: outer = {outer_iters}, inner = {inner_iters}")
 solver.plot_residuals()
 # solver.print_states()
 # solver.print_inputs()
