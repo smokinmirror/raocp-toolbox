@@ -28,7 +28,6 @@ class Solver:
         self.__delta_error = [np.zeros(1)] * 3
         self.__error_cache = None
         self.__delta_error_cache = None
-        self.__supermann = None
 
     def primal_k_plus_half(self):
         # get memory space for ell_transpose_dual
@@ -189,7 +188,7 @@ class Solver:
         print(f"timer stopped in {tock - tick:0.4f} seconds")
         return self.check_convergence(current_iteration)
 
-    def super_chock(self, initial_state, c0=0.99, c1=0.99, c2=0.99, beta=0.5, sigma=0.1, lamda=1.95):
+    def super_chock(self, initial_state, c0=0.99, c1=0.99, c2=0.99, beta=0.5, sigma=0.1, lamda=1.95, alpha=0.5):
         """
         Chambolle-Pock algorithm accelerated by SuperMann
         """
@@ -198,7 +197,8 @@ class Solver:
         self.__cache.cache_initial_state(self.__initial_state)
         self.get_alphas()
         current_iteration = 0
-        counter_sm = 0
+        current_error = None
+        x_kplus1 = None
         pos_k = 0
         pos_kplus1 = 1
         print("timer started")
@@ -206,22 +206,52 @@ class Solver:
         keep_running = True
         repeat = True
         while keep_running:
+            counter_sm = 0
             eta = [None] * 2
-            w = [None] * 2
+            w_k = None
             r_safe = None
             while repeat:
-                vector_x_k = self.parts_to_vector(self.__cache.get_primal(), self.__cache.get_dual())
-                self.chock_operator()
-                vector_x_kplus1 = self.parts_to_vector(self.__cache.get_primal(), self.__cache.get_dual())
-                current_error = self.get_current_error()
+                prim_x_k, _ = self.__cache.get_primal()
+                dual_x_k, _ = self.__cache.get_dual()
+                vector_x_k = self.parts_to_vector(prim_x_k, dual_x_k)
+                norm_resid_x = self.get_chock_norm_residual(prim_x_k, dual_x_k)
+                if counter_sm == 0:
+                    eta[pos_k] = norm_resid_x
+                    r_safe = norm_resid_x
+                if norm_resid_x < self.__tol:
+                    repeat = False
+                else:
+                    update_direction = 0  # needs updated
+                    if norm_resid_x <= c0 * eta[pos_k]:
+                        eta[pos_kplus1] = norm_resid_x
+                        x_kplus1 = vector_x_k + update_direction
+                    else:
+                        eta[pos_kplus1] = eta[pos_k]
+                        tau = 1
+                        w_k = vector_x_k + tau * update_direction
+                        prim_w, dual_w = self.vector_to_parts(w_k)
+                        norm_resid_w, resid_w = self.get_chock_norm_residual(prim_w, dual_w, residual=True)
+                        if norm_resid_x <= r_safe and norm_resid_w <= c1 * norm_resid_x:
+                            x_kplus1 = w_k
+                            r_safe = norm_resid_w + c2**counter_sm
+                        else:
+                            rho = norm_resid_w**2 - 2 * alpha * self.chock_inner_prod(resid_w, w_k - vector_x_k)
+                            if rho >= sigma * norm_resid_w * norm_resid_x:
+                                x_kplus1 = vector_x_k - lamda * (rho / norm_resid_w**2) * resid_w
+                            else:
+                                tau *= beta
+                prim_kplus1, dual_kplus1 = self.vector_to_parts(x_kplus1)
+                self.__cache.set_primal(prim_kplus1)
+                self.__cache.set_dual(dual_kplus1)
                 self.__cache.update_cache()
+                current_error = self.get_current_error()
                 if counter_sm == 0:
                     self.__error_cache = np.array(self.__error)
                 else:
                     self.__error_cache = np.vstack((self.__error_cache, np.array(self.__error)))
-                counter_sm, repeat = self.check_termination_criteria(current_error,
-                                                                     counter_sm,
-                                                                     repeat)
+                eta[pos_k] = eta[pos_kplus1]
+                eta[pos_kplus1] = None
+                counter_sm += 1
 
             # check stopping criteria
             current_iteration, keep_running = self.check_termination_criteria(current_error,
@@ -231,7 +261,22 @@ class Solver:
         tock = time.perf_counter()
         print(f"timer stopped in {tock - tick:0.4f} seconds")
         print(self.__error_cache[0])
-        return self.check_convergence(current_iteration), current_iteration, counter_sm
+        return self.check_convergence(current_iteration)
+
+    def get_chock_norm_residual(self, prim_k_, dual_k_, residual=False):
+        vector_x_k = self.parts_to_vector(prim_k_, dual_k_)
+        self.__cache.set_primal(prim_k_)
+        self.__cache.set_dual(dual_k_)
+        self.chock_operator()
+        prim_kplus1, _ = self.__cache.get_primal()
+        dual_kplus1, _ = self.__cache.get_dual()
+        vector_x_kplus1 = self.parts_to_vector(prim_kplus1, dual_kplus1)
+        resid = self.chock_residual(vector_x_k, vector_x_kplus1)
+        norm = self.chock_norm(resid)
+        if residual:
+            return norm, resid
+        else:
+            return norm
 
     def chock_operator(self):
         # run primal part of algorithm
@@ -240,6 +285,36 @@ class Solver:
         # run dual part of algorithm
         self.dual_k_plus_half()
         self.dual_k_plus_one()
+
+    def chock_norm(self, vector_):
+        norm = np.sqrt(self.chock_inner_prod(vector_, vector_))
+        return norm
+
+    def chock_norm_squared(self, vector_):
+        norm = self.chock_inner_prod(vector_, vector_)
+        return norm
+
+    def chock_inner_prod(self, vector_a_, vector_b_):
+        if vector_a_.shape[1] != 1 or vector_b_.shape[1] != 1:
+            raise Exception("non column vectors provided to inner product")
+        inner = vector_a_.T @ self.chock_inner_prod_matrix(vector_b_)
+        print(inner)
+        return inner[0]
+
+    @staticmethod
+    def chock_residual(vector_k_, vector_kplus1_):
+        residual = vector_k_ - vector_kplus1_
+        return residual
+
+    def chock_inner_prod_matrix(self, vector_a_):
+        prim_, dual_ = self.vector_to_parts(vector_a_)
+        ell_transpose_dual, _ = self.__cache.get_primal
+        ell_prim, _ = self.__cache.get_dual
+        self.__operator.ell_transpose(dual_, ell_transpose_dual)
+        self.__operator.ell(prim_, ell_prim)
+        modified_prim = prim_ - self.__parameter_1 * ell_transpose_dual
+        modified_dual = dual_ - self.__parameter_2 * ell_transpose_dual
+        return self.parts_to_vector(modified_prim, modified_dual)
 
     @staticmethod
     def parts_to_vector(prim_, dual_):
