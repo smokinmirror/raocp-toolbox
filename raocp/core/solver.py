@@ -28,6 +28,8 @@ class Solver:
         self.__delta_error = [np.zeros(1)] * 3
         self.__error_cache = None
         self.__delta_error_cache = None
+        self.__memory_size_andy = 3  # memory
+        self.__counter_andy = None
 
     def primal_k_plus_half(self):
         # get memory space for ell_transpose_dual
@@ -192,7 +194,6 @@ class Solver:
         """
         Chambolle-Pock algorithm accelerated by SuperMann
         """
-        # self.__supermann = sm.SuperMann(self.__cache, c0, c1, c2, beta, sigma, lamda)
         self.__initial_state = initial_state
         self.__cache.cache_initial_state(self.__initial_state)
         self.get_alphas()
@@ -208,20 +209,27 @@ class Solver:
         while keep_running:
             counter_sm = 0
             eta = [None] * 2
-            w_k = None
             r_safe = None
             while repeat:
                 prim_x_k, _ = self.__cache.get_primal()
                 dual_x_k, _ = self.__cache.get_dual()
                 vector_x_k = self.parts_to_vector(prim_x_k, dual_x_k)
-                norm_resid_x = self.get_chock_norm_residual(prim_x_k, dual_x_k)
+                # self.__cache.set_primal(prim_x_k)
+                # self.__cache.set_dual(dual_x_k)
+                # self.chock_operator()
+                # prim_kplus1, _ = self.__cache.get_primal()
+                # dual_kplus1, _ = self.__cache.get_dual()
+                # vector_x_kplus1 = self.parts_to_vector(prim_kplus1, dual_kplus1)
+                # resid_x = self.chock_residual(vector_x_k, vector_x_kplus1)
+                # norm_resid_x = self.chock_norm(resid_x)
+                norm_resid_x, vector_x_kplus1 = self.get_chock_norm_residual(prim_x_k, dual_x_k, vector=True)
                 if counter_sm == 0:
                     eta[pos_k] = norm_resid_x
                     r_safe = norm_resid_x
                 if norm_resid_x < self.__tol:
                     repeat = False
                 else:
-                    update_direction = 0  # needs updated
+                    update_direction = self.andersons_direction(vector_x_k, vector_x_kplus1)
                     if norm_resid_x <= c0 * eta[pos_k]:
                         eta[pos_kplus1] = norm_resid_x
                         x_kplus1 = vector_x_k + update_direction
@@ -260,21 +268,22 @@ class Solver:
 
         tock = time.perf_counter()
         print(f"timer stopped in {tock - tick:0.4f} seconds")
-        print(self.__error_cache[0])
         return self.check_convergence(current_iteration)
 
-    def get_chock_norm_residual(self, prim_k_, dual_k_, residual=False):
-        vector_x_k = self.parts_to_vector(prim_k_, dual_k_)
+    def get_chock_norm_residual(self, prim_k_, dual_k_, residual=False, vector=False):
+        vector_x_k_ = self.parts_to_vector(prim_k_, dual_k_)
         self.__cache.set_primal(prim_k_)
         self.__cache.set_dual(dual_k_)
         self.chock_operator()
         prim_kplus1, _ = self.__cache.get_primal()
         dual_kplus1, _ = self.__cache.get_dual()
         vector_x_kplus1 = self.parts_to_vector(prim_kplus1, dual_kplus1)
-        resid = self.chock_residual(vector_x_k, vector_x_kplus1)
+        resid = self.chock_residual(vector_x_k_, vector_x_kplus1)
         norm = self.chock_norm(resid)
         if residual:
             return norm, resid
+        elif vector:
+            return norm, vector_x_kplus1
         else:
             return norm
 
@@ -298,7 +307,6 @@ class Solver:
         if vector_a_.shape[1] != 1 or vector_b_.shape[1] != 1:
             raise Exception("non column vectors provided to inner product")
         inner = vector_a_.T @ self.chock_inner_prod_matrix(vector_b_)
-        print(inner)
         return inner[0]
 
     @staticmethod
@@ -308,12 +316,12 @@ class Solver:
 
     def chock_inner_prod_matrix(self, vector_a_):
         prim_, dual_ = self.vector_to_parts(vector_a_)
-        ell_transpose_dual, _ = self.__cache.get_primal
-        ell_prim, _ = self.__cache.get_dual
+        ell_transpose_dual, _ = self.__cache.get_primal()
+        ell_prim, _ = self.__cache.get_dual()
         self.__operator.ell_transpose(dual_, ell_transpose_dual)
         self.__operator.ell(prim_, ell_prim)
-        modified_prim = prim_ - self.__parameter_1 * ell_transpose_dual
-        modified_dual = dual_ - self.__parameter_2 * ell_transpose_dual
+        modified_prim = [a_i - (self.__parameter_1 * b_i) for a_i, b_i in zip(prim_, ell_transpose_dual)]
+        modified_dual = [a_i - (self.__parameter_2 * b_i) for a_i, b_i in zip(dual_, ell_prim)]
         return self.parts_to_vector(modified_prim, modified_dual)
 
     @staticmethod
@@ -321,20 +329,48 @@ class Solver:
         return np.vstack((np.vstack(prim_), np.vstack(dual_)))
 
     def vector_to_parts(self, vector_):
-        prim_ = self.__cache.get_primal()
-        dual_ = self.__cache.get_dual()
+        prim_, _ = self.__cache.get_primal()
+        dual_, _ = self.__cache.get_dual()
         index = 0
         for i in range(len(prim_)):
             size_ = prim_[i].size
-            prim_[i] = vector_[index: size_]
+            prim_[i] = np.array(vector_[index: index + size_]).reshape(-1, 1)
             index += size_
 
         for i in range(len(dual_)):
             size_ = dual_[i].size
-            dual_[i] = vector_[index: size_]
+            dual_[i] = np.array(vector_[index: index + size_]).reshape(-1, 1)
             index += size_
 
         return prim_, dual_
+
+    def andersons_setup(self, x_k_, x_kplus1_):
+        pass
+    
+    def andersons_direction(self, x_k_, x_kplus1_):
+        x = [x_k_, x_kplus1_]  # list of iterates x
+        g = [x_k_ - x_kplus1_]  # list of residuals
+        matrix_x_k = x[1] - x[0]  # matrix of increments in x
+        matrix_g_k = g[1] - g[0]  # matrix of increments in residuals
+        # self.__counter_andy = 2
+        # m_k = min(self.__counter_andy, self.__memory_size_andy)
+        # Solve the optimization problem by QR decomposition
+        [decomp_q, decomp_r] = np.linalg.qr(matrix_g_k)
+        gamma_k = np.linald.solve(decomp_r, decomp_q.T @ g[0])
+        # return direction
+        return g[0] - (matrix_x_k + matrix_g_k) * gamma_k
+
+        # Compute new iterate and new residual.
+        # x(k + 1) = x(k) + g(k) - (X_k + G_k) * gamma_k
+        # g(k + 1) = f(x(k + 1)) - x(k + 1)
+        # Update increment matrices with new elements.
+        # X_k =[X_k, x(k + 1) - x(k)]
+        # G_k =[G_k, g(k + 1) - g(k)]
+        # n = size(X_k, 2)
+        # if n > m_k:
+        #     X_k = X_k(:,n - m_k + 1: end)
+        #     G_k = G_k(:, n - m_k + 1: end)
+        # k = k + 1
 
     # print ###################################################
     def print_states(self):
