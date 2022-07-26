@@ -4,7 +4,6 @@ import time
 import raocp.core.cache as cache
 import raocp.core.operators as ops
 import raocp.core.raocp_spec as spec
-import raocp.core.supermann as sm
 
 import matplotlib.pyplot as plt
 import tikzplotlib as tikz
@@ -22,14 +21,20 @@ class Solver:
         self.__initial_state = None
         self.__parameter_1 = None
         self.__parameter_2 = None
+        self.__chock_iter = 0
         self.__max_iters = max_iters
         self.__tol = tol
         self.__error = [np.zeros(1)] * 3
         self.__delta_error = [np.zeros(1)] * 3
         self.__error_cache = None
         self.__delta_error_cache = None
-        self.__memory_size_andy = 3  # memory
-        self.__counter_andy = None
+        # andersons direction
+        self.__andys_memory_size = 3
+        self.__andys_x = None
+        self.__andys_g = None
+        self.__andys_matrix_x_k = None
+        self.__andys_matrix_g_k = None
+        self.__andys_counter_k = None
 
     def primal_k_plus_half(self):
         # get memory space for ell_transpose_dual
@@ -138,7 +143,7 @@ class Solver:
         if current_error_ <= self.__tol:
             keep_running_ = False
         if keep_running_ is True:
-            current_iteration_ += 1
+            current_iteration_ = current_iteration_ + 1
         return current_iteration_, keep_running_
 
     def check_convergence(self, current_iter_):
@@ -197,9 +202,9 @@ class Solver:
         self.__initial_state = initial_state
         self.__cache.cache_initial_state(self.__initial_state)
         self.get_alphas()
-        current_iteration = 0
         current_error = None
-        x_kplus1 = None
+        accepted_x_kplus1 = None
+        accepted = False
         pos_k = 0
         pos_kplus1 = 1
         print("timer started")
@@ -208,51 +213,59 @@ class Solver:
         repeat = True
         while keep_running:
             counter_sm = 0
-            eta = [None] * 2
+            eta = [np.zeros(0)] * 2
             r_safe = None
+            setup_prim_x_k, _ = self.__cache.get_primal()
+            setup_dual_x_k, _ = self.__cache.get_dual()
+            setup_vector_x_k = self.parts_to_vector(setup_prim_x_k, setup_dual_x_k)
+            _, setup_vector_x_kplus1 = self.get_chock_norm_residual(setup_vector_x_k, vector=True)
+            _, setup_vector_x_kplus2 = self.get_chock_norm_residual(setup_vector_x_kplus1, vector=True)
+            self.andersons_setup(setup_vector_x_k, setup_vector_x_kplus1, setup_vector_x_kplus2)
+            vector_x_k = setup_vector_x_kplus2
             while repeat:
-                prim_x_k, _ = self.__cache.get_primal()
-                dual_x_k, _ = self.__cache.get_dual()
-                vector_x_k = self.parts_to_vector(prim_x_k, dual_x_k)
-                # self.__cache.set_primal(prim_x_k)
-                # self.__cache.set_dual(dual_x_k)
-                # self.chock_operator()
-                # prim_kplus1, _ = self.__cache.get_primal()
-                # dual_kplus1, _ = self.__cache.get_dual()
-                # vector_x_kplus1 = self.parts_to_vector(prim_kplus1, dual_kplus1)
-                # resid_x = self.chock_residual(vector_x_k, vector_x_kplus1)
-                # norm_resid_x = self.chock_norm(resid_x)
-                norm_resid_x, vector_x_kplus1 = self.get_chock_norm_residual(prim_x_k, dual_x_k, vector=True)
+                norm_resid_x, candidate_vector_x_kplus1 = self.get_chock_norm_residual(vector_x_k, vector=True)
                 if counter_sm == 0:
                     eta[pos_k] = norm_resid_x
                     r_safe = norm_resid_x
                 if norm_resid_x < self.__tol:
                     repeat = False
                 else:
-                    update_direction = self.andersons_direction(vector_x_k, vector_x_kplus1)
+                    update_direction = self.andersons_direction(vector_x_k)
                     if norm_resid_x <= c0 * eta[pos_k]:
                         eta[pos_kplus1] = norm_resid_x
-                        x_kplus1 = vector_x_k + update_direction
+                        accepted_x_kplus1 = vector_x_k + update_direction
+                        accepted = True
                     else:
                         eta[pos_kplus1] = eta[pos_k]
                         tau = 1
-                        w_k = vector_x_k + tau * update_direction
-                        prim_w, dual_w = self.vector_to_parts(w_k)
-                        norm_resid_w, resid_w = self.get_chock_norm_residual(prim_w, dual_w, residual=True)
+                        vector_w_k = vector_x_k + tau * update_direction
+                        # prim_w, dual_w = self.vector_to_parts(vector_w_k)
+                        norm_resid_w, resid_w = self.get_chock_norm_residual(vector_w_k, residual=True)
                         if norm_resid_x <= r_safe and norm_resid_w <= c1 * norm_resid_x:
-                            x_kplus1 = w_k
+                            accepted_x_kplus1 = vector_w_k
+                            accepted = True
                             r_safe = norm_resid_w + c2**counter_sm
                         else:
-                            rho = norm_resid_w**2 - 2 * alpha * self.chock_inner_prod(resid_w, w_k - vector_x_k)
+                            rho = norm_resid_w**2 - 2 * alpha * self.chock_inner_prod(resid_w, vector_w_k - vector_x_k)
                             if rho >= sigma * norm_resid_w * norm_resid_x:
-                                x_kplus1 = vector_x_k - lamda * (rho / norm_resid_w**2) * resid_w
+                                accepted_x_kplus1 = vector_x_k - lamda * (rho / norm_resid_w**2) * resid_w
+                                accepted = True
                             else:
                                 tau *= beta
-                prim_kplus1, dual_kplus1 = self.vector_to_parts(x_kplus1)
-                self.__cache.set_primal(prim_kplus1)
-                self.__cache.set_dual(dual_kplus1)
-                self.__cache.update_cache()
-                current_error = self.get_current_error()
+                if not accepted and not repeat:
+                    accept_cand_prim_kplus1, accept_cand_dual_kplus1 = self.vector_to_parts(candidate_vector_x_kplus1)
+                    self.__cache.set_primal(accept_cand_prim_kplus1)
+                    self.__cache.set_dual(accept_cand_dual_kplus1)
+                    self.__cache.update_cache()
+                    current_error = self.get_current_error()
+                if accepted:
+                    accepted_prim_kplus1, accepted_dual_kplus1 = self.vector_to_parts(accepted_x_kplus1)
+                    self.__cache.set_primal(accepted_prim_kplus1)
+                    self.__cache.set_dual(accepted_dual_kplus1)
+                    self.__cache.update_cache()
+                    current_error = self.get_current_error()
+                    vector_x_k = accepted_x_kplus1
+                    accepted = False
                 if counter_sm == 0:
                     self.__error_cache = np.array(self.__error)
                 else:
@@ -262,30 +275,30 @@ class Solver:
                 counter_sm += 1
 
             # check stopping criteria
-            current_iteration, keep_running = self.check_termination_criteria(current_error,
-                                                                              current_iteration,
+            self.__chock_iter, keep_running = self.check_termination_criteria(current_error,
+                                                                              self.__chock_iter,
                                                                               keep_running)
 
         tock = time.perf_counter()
         print(f"timer stopped in {tock - tick:0.4f} seconds")
-        return self.check_convergence(current_iteration)
+        return self.check_convergence(self.__chock_iter), self.__chock_iter, self.__andys_counter_k
 
-    def get_chock_norm_residual(self, prim_k_, dual_k_, residual=False, vector=False):
-        vector_x_k_ = self.parts_to_vector(prim_k_, dual_k_)
+    def get_chock_norm_residual(self, vector_x_k_, residual=False, vector=False):
+        prim_k_, dual_k_ = self.vector_to_parts(vector_x_k_)
         self.__cache.set_primal(prim_k_)
         self.__cache.set_dual(dual_k_)
         self.chock_operator()
-        prim_kplus1, _ = self.__cache.get_primal()
-        dual_kplus1, _ = self.__cache.get_dual()
-        vector_x_kplus1 = self.parts_to_vector(prim_kplus1, dual_kplus1)
-        resid = self.chock_residual(vector_x_k_, vector_x_kplus1)
-        norm = self.chock_norm(resid)
+        prim_kplus1_, _ = self.__cache.get_primal()
+        dual_kplus1_, _ = self.__cache.get_dual()
+        vector_x_kplus1_ = self.parts_to_vector(prim_kplus1_, dual_kplus1_)
+        resid_ = self.chock_residual(vector_x_k_, vector_x_kplus1_)
+        norm_ = self.chock_norm(resid_)
         if residual:
-            return norm, resid
+            return norm_, resid_
         elif vector:
-            return norm, vector_x_kplus1
+            return norm_, vector_x_kplus1_
         else:
-            return norm
+            return norm_
 
     def chock_operator(self):
         # run primal part of algorithm
@@ -344,33 +357,32 @@ class Solver:
 
         return prim_, dual_
 
-    def andersons_setup(self, x_k_, x_kplus1_):
-        pass
+    def andersons_setup(self, x_k_, x_kplus1_, x_kplus2_):
+        self.__andys_x = [x_k_, x_kplus1_]  # list of iterates x
+        self.__andys_g = [x_kplus1_ - x_k_, x_kplus2_ - x_kplus1_]  # list of residuals
+        self.__andys_matrix_x_k = self.__andys_x[1] - self.__andys_x[0]  # matrix of increments in x
+        self.__andys_matrix_g_k = self.__andys_g[1] - self.__andys_g[0]  # matrix of increments in residuals
+        self.__andys_counter_k = 1
     
-    def andersons_direction(self, x_k_, x_kplus1_):
-        x = [x_k_, x_kplus1_]  # list of iterates x
-        g = [x_k_ - x_kplus1_]  # list of residuals
-        matrix_x_k = x[1] - x[0]  # matrix of increments in x
-        matrix_g_k = g[1] - g[0]  # matrix of increments in residuals
-        # self.__counter_andy = 2
-        # m_k = min(self.__counter_andy, self.__memory_size_andy)
-        # Solve the optimization problem by QR decomposition
-        [decomp_q, decomp_r] = np.linalg.qr(matrix_g_k)
-        gamma_k = np.linald.solve(decomp_r, decomp_q.T @ g[0])
+    def andersons_direction(self, x_k_):
+        m_k = min(self.__andys_counter_k, self.__andys_memory_size)
+        self.__andys_g.append(x_k_ - self.__andys_x[-1])
+        self.__andys_x.append(x_k_)
+        self.__andys_matrix_x_k = np.hstack((self.__andys_matrix_x_k,
+                                             self.__andys_x[self.__andys_counter_k+1] -
+                                             self.__andys_x[self.__andys_counter_k]))
+        self.__andys_matrix_g_k = np.hstack((self.__andys_matrix_g_k,
+                                             self.__andys_g[self.__andys_counter_k + 1] -
+                                             self.__andys_g[self.__andys_counter_k]))
+        if self.__andys_matrix_x_k.shape[1] > m_k:
+            self.__andys_matrix_x_k = np.delete(self.__andys_matrix_x_k, axis=1, obj=0)
+            self.__andys_matrix_g_k = np.delete(self.__andys_matrix_g_k, axis=1, obj=0)
+        # QR decomposition
+        decomp_q, decomp_r = np.linalg.qr(self.__andys_matrix_g_k)
+        gamma_k = np.linalg.solve(decomp_r, decomp_q.T @ self.__andys_g[self.__andys_counter_k])
+        self.__andys_counter_k = self.__andys_counter_k + 1
         # return direction
         return g[0] - (matrix_x_k + matrix_g_k) * gamma_k
-
-        # Compute new iterate and new residual.
-        # x(k + 1) = x(k) + g(k) - (X_k + G_k) * gamma_k
-        # g(k + 1) = f(x(k + 1)) - x(k + 1)
-        # Update increment matrices with new elements.
-        # X_k =[X_k, x(k + 1) - x(k)]
-        # G_k =[G_k, g(k + 1) - g(k)]
-        # n = size(X_k, 2)
-        # if n > m_k:
-        #     X_k = X_k(:,n - m_k + 1: end)
-        #     G_k = G_k(:, n - m_k + 1: end)
-        # k = k + 1
 
     # print ###################################################
     def print_states(self):
