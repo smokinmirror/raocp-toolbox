@@ -14,7 +14,7 @@ p = np.array([[0.1, 0.8, 0.1],
 
 v = np.array([0.1, 0.6, 0.3])
 
-(N, tau) = (4, 3)
+(N, tau) = (10, 3)
 tree = r.core.MarkovChainScenarioTreeFactory(transition_prob=p,
                                              initial_distribution=v,
                                              num_stages=N, stopping_time=tau).create()
@@ -75,15 +75,28 @@ problem = r.core.RAOCP(scenario_tree=tree) \
     .with_all_nonleaf_constraints(nl_rect) \
     .with_all_leaf_constraints(l_rect)
 
-solver = r.core.Solver(problem_spec=problem)
+simple_solver = r.core.Solver(problem_spec=problem, max_iters=2000, tol=1e-3)
+super_solver = r.core.Solver(problem_spec=problem, max_iters=2000, tol=1e-3)
 initial_state = np.array([[5], [-6], [-1]])  # np.random.randn(num_states).reshape(-1, 1)
-status = solver.chock(initial_state=initial_state, max_iters=2000, tol=1e-3)
-if status == 0:
-    print("success")
-else:
-    print("fail")
 
-solver.plot_residuals()
-# solver.print_states()
-# solver.print_inputs()
-# solver.plot_solution()
+# simple chock
+simple_chock_status = simple_solver.simple_chock(initial_state=initial_state)
+if simple_chock_status == 0:
+    print("simple chock success")
+else:
+    print("simple chock fail")
+# simple_solver.plot_residuals("simple")
+simple_solver.plot_solution("simple")
+# simple_solver.print_states()
+# simple_solver.print_inputs()
+
+# super chock
+super_chock_status, outer_iters, inner_iters = super_solver.super_chock(initial_state=initial_state)
+if super_chock_status == 0:
+    print(f"super chock success: outer = {outer_iters}, inner = {inner_iters}")
+else:
+    print(f"super chock fail: outer = {outer_iters}, inner = {inner_iters}")
+# super_solver.plot_residuals("super")
+super_solver.plot_solution("super")
+# super_solver.print_states()
+# super_solver.print_inputs()

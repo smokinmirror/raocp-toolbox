@@ -9,6 +9,7 @@ import raocp.core.raocp_spec as core_spec
 import raocp.core.risks as core_risks
 import raocp.core.scenario_tree as core_tree
 import raocp.core.constraints.rectangle as rectangle
+from copy import deepcopy
 
 
 class TestCache(unittest.TestCase):
@@ -87,6 +88,32 @@ class TestCache(unittest.TestCase):
         super().setUpClass()
         TestCache._construct_tree_from_markov()
         TestCache._construct_raocp_from_markov()
+
+    def test_set_primal(self):
+        mock_cache, seg_p, seg_d = self._construct_mock_cache()
+        _, prim = mock_cache.get_primal()  # template
+        length = len(prim)
+        primal_set = deepcopy(prim)
+        for i in range(length):
+            primal_set[i] = np.random.randn(prim[i].size).reshape(-1, 1)
+
+        mock_cache.set_primal(primal_set)
+        primal_get, _ = mock_cache.get_primal()
+        for i in range(length):
+            self.assertTrue(np.array_equal(primal_set[i], primal_get[i]))
+
+    def test_set_dual(self):
+        mock_cache, seg_p, seg_d = self._construct_mock_cache()
+        _, dual = mock_cache.get_dual()  # template
+        length = len(dual)
+        dual_set = deepcopy(dual)
+        for i in range(length):
+            dual_set[i] = np.random.randn(dual[i].size).reshape(-1, 1)
+
+        mock_cache.set_dual(dual_set)
+        dual_get, _ = mock_cache.get_dual()
+        for i in range(length):
+            self.assertTrue(np.array_equal(dual_set[i], dual_get[i]))
 
     def test_cache_initial_state(self):
         mock_cache, seg_p, seg_d = self._construct_mock_cache()
