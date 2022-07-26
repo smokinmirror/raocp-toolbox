@@ -154,7 +154,7 @@ class Solver:
         else:
             raise Exception("Iteration error in solver")
 
-    def chock(self, initial_state):
+    def simple_chock(self, initial_state):
         """
         Chambolle-Pock algorithm, plain and simple
         """
@@ -173,11 +173,12 @@ class Solver:
             self.dual_k_plus_half()
             self.dual_k_plus_one()
 
+            # cache variables
+            self.__cache.update_cache()
+
             # calculate current error
             current_error = self.get_current_error()
 
-            # cache variables
-            self.__cache.update_cache()
             # cache error
             if current_iteration == 0:
                 self.__error_cache = np.array(self.__error)
@@ -209,10 +210,9 @@ class Solver:
         pos_kplus1 = 1
         print("timer started")
         tick = time.perf_counter()
+        counter_sm = 0
         keep_running = True
-        repeat = True
         while keep_running:
-            counter_sm = 0
             eta = [np.zeros(0)] * 2
             r_safe = None
             setup_prim_x_k, _ = self.__cache.get_primal()
@@ -222,12 +222,13 @@ class Solver:
             _, setup_vector_x_kplus2 = self.get_chock_norm_residual(setup_vector_x_kplus1, vector=True)
             self.andersons_setup(setup_vector_x_k, setup_vector_x_kplus1, setup_vector_x_kplus2)
             vector_x_k = setup_vector_x_kplus2
+            repeat = True
             while repeat:
                 norm_resid_x, candidate_vector_x_kplus1 = self.get_chock_norm_residual(vector_x_k, vector=True)
                 if counter_sm == 0:
                     eta[pos_k] = norm_resid_x
                     r_safe = norm_resid_x
-                if norm_resid_x < self.__tol:
+                if norm_resid_x < 1e-12:
                     repeat = False
                 else:
                     update_direction = self.andersons_direction(vector_x_k)
@@ -239,7 +240,6 @@ class Solver:
                         eta[pos_kplus1] = eta[pos_k]
                         tau = 1
                         vector_w_k = vector_x_k + tau * update_direction
-                        # prim_w, dual_w = self.vector_to_parts(vector_w_k)
                         norm_resid_w, resid_w = self.get_chock_norm_residual(vector_w_k, residual=True)
                         if norm_resid_x <= r_safe and norm_resid_w <= c1 * norm_resid_x:
                             accepted_x_kplus1 = vector_w_k
@@ -262,8 +262,9 @@ class Solver:
                     accepted_prim_kplus1, accepted_dual_kplus1 = self.vector_to_parts(accepted_x_kplus1)
                     self.__cache.set_primal(accepted_prim_kplus1)
                     self.__cache.set_dual(accepted_dual_kplus1)
-                    self.__cache.update_cache()
+                    # self.__cache.update_cache()
                     current_error = self.get_current_error()
+                    self.__cache.update_cache()
                     vector_x_k = accepted_x_kplus1
                     accepted = False
                 if counter_sm == 0:
@@ -382,7 +383,7 @@ class Solver:
         gamma_k = np.linalg.solve(decomp_r, decomp_q.T @ self.__andys_g[self.__andys_counter_k])
         self.__andys_counter_k = self.__andys_counter_k + 1
         # return direction
-        return g[0] - (matrix_x_k + matrix_g_k) * gamma_k
+        return self.__andys_g[0] - (self.__andys_matrix_x_k + self.__andys_matrix_g_k) * gamma_k
 
     # print ###################################################
     def print_states(self):
@@ -399,7 +400,7 @@ class Solver:
         for i in range(seg_p[2], seg_p[3]):
             print(f"{primal[i]}\n")
 
-    def plot_residuals(self):
+    def plot_residuals(self, solver):
         width = 2
         plt.semilogy(self.__error_cache[:, 0], linewidth=width, linestyle="solid")
         plt.semilogy(self.__error_cache[:, 1], linewidth=width, linestyle="solid")
@@ -407,14 +408,14 @@ class Solver:
         # plt.semilogy(self.__delta_error_cache[:, 0], linewidth=width, linestyle="dashed")
         # plt.semilogy(self.__delta_error_cache[:, 1], linewidth=width, linestyle="dashed")
         # plt.semilogy(self.__delta_error_cache[:, 2], linewidth=width, linestyle="dashed")
-        plt.title("Residual values of Chambolle-Pock algorithm iterations")
+        plt.title(f"{solver} solver residual values of Chambolle-Pock algorithm iterations")
         plt.ylabel(r"log(residual value)", fontsize=12)
         plt.xlabel(r"iteration", fontsize=12)
         plt.legend(("xi_0", "xi_1", "xi_2"))  # , "delta_0", "delta_1", "delta_2"))
         tikz.save('4-3-residuals.tex')
         plt.show()
 
-    def plot_solution(self):
+    def plot_solution(self, solver):
         primal, _ = self.__cache.get_primal()
         seg_p = self.__cache.get_primal_segments()
         x = primal[seg_p[1]: seg_p[2]]
@@ -429,6 +430,7 @@ class Solver:
         fig, axs = plt.subplots(2, state_size, sharex="all", sharey="row")
         fig.set_size_inches(15, 8)
         fig.set_dpi(80)
+        fig.suptitle(f"{solver} solver", fontsize=16)
 
         for element in range(state_size):
             for i in range(num_leaf):
